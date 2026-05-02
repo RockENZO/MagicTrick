@@ -65,59 +65,55 @@ final class TrickViewModel: ObservableObject {
     // MARK: - Orientation Handlers
 
     func onRotateToLandscape() {
+        // Phase change is INSTANT — DeckView handles animation via screen-size interpolation
+        // Clear any active peek
+        peekedCardID = nil
+        peekOffset = .zero
+        hasFlipped = false
+
         switch phase {
         case .idle:
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                phase = .spread
-            }
+            phase = .spread
         case .shuffling:
-            // Stop any in-flight shuffle animation
             isShuffling = false
             shuffleWorkItem?.cancel()
             shuffleWorkItem = nil
             settleShuffle()
 
             hasRevealed = false
-            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                phase = .spread
-            }
+            phase = .spread
         default:
             break
         }
     }
 
     func onRotateToPortrait() {
+        // Clear any active peek
+        peekTimer?.cancel()
+        peekTimer = nil
+        if let cardID = peekedCardID, let idx = deck.firstIndex(where: { $0.id == cardID }) {
+            deck[idx].isFaceUp = false
+        }
+        peekedCardID = nil
+        peekOffset = .zero
+        hasFlipped = false
+
         switch phase {
         case .reveal:
-            withAnimation(.easeInOut(duration: 0.4)) {
+            // Keep withAnimation for RevealView opacity transition
+            withAnimation(.easeOut(duration: 0.3)) {
                 resetDeck()
             }
         case .spread:
-            // Cancel any peek timer
-            peekTimer?.cancel()
-            peekTimer = nil
-
-            // Flip any peeked card back face-down
-            if let cardID = peekedCardID, let idx = deck.firstIndex(where: { $0.id == cardID }) {
-                deck[idx].isFaceUp = false
-            }
-            peekedCardID = nil
-            peekOffset = .zero
-            hasFlipped = false
-
             if hasRevealed || revealCard != nil {
-                withAnimation(.easeInOut(duration: 0.4)) {
+                withAnimation(.easeOut(duration: 0.3)) {
                     resetDeck()
                 }
             } else if hasPickedCard || chosenCard != nil {
                 hasPickedCard = true
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                    phase = .idle
-                }
+                phase = .idle  // Instant — DeckView handles animation via interpolation
             } else {
-                withAnimation(.easeInOut(duration: 0.4)) {
-                    phase = .idle
-                }
+                phase = .idle  // Instant
             }
         default:
             break
@@ -139,7 +135,9 @@ final class TrickViewModel: ObservableObject {
             deck[prevIdx].isFaceUp = false
         }
 
-        peekedCardID = id
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            peekedCardID = id
+        }
         peekOffset = .zero
         hasFlipped = false
         HapticManager.shared.cardFlip()
@@ -260,7 +258,9 @@ final class TrickViewModel: ObservableObject {
 
         // If already shuffling from a previous shake, just restart the loop
         if phase == .idle {
-            phase = .shuffling
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+                phase = .shuffling
+            }
         }
         isShuffling = true
         shuffleOffsets = Array(repeating: 0, count: deck.count)
@@ -276,6 +276,10 @@ final class TrickViewModel: ObservableObject {
         shuffleWorkItem?.cancel()
         shuffleWorkItem = nil
         settleShuffle()
+        // Transition to idle — explicit withAnimation since DeckView no longer uses .animation(value:) modifiers
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+            phase = .idle
+        }
     }
 
     /// Dramatic overhand riffle — big lifts, wide lateral spread, fast cadence
@@ -372,5 +376,7 @@ final class TrickViewModel: ObservableObject {
         guard phase == .shuffling else { return }
         magicTriggered = true
         HapticManager.shared.magicSignal()
+        // Note: phase doesn't change here — shuffling continues.
+        // Phase will change on rotate-to-landscape (spread) or on shake-end (idle).
     }
 }

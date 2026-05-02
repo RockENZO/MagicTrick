@@ -35,6 +35,7 @@ struct ContentView: View {
                 }
             }
             .ignoresSafeArea()
+            // Handle rotation for phases where DeckView is not visible (.reveal)
             .onChange(of: isLandscape) { newValue in
                 if newValue {
                     viewModel.onRotateToLandscape()

@@ -11,10 +11,16 @@ struct DeckView: View {
     private let cardWidth: CGFloat = 80
     private let cardHeight: CGFloat = 120
 
+    // Animated screen-size interpolation for smooth rotation transitions
+    @State private var animatedScreenSize: CGSize = .zero
+    @State private var targetScreenSize: CGSize = .zero
+    @State private var hasAppeared = false
+
     var body: some View {
         GeometryReader { geometry in
-            let screenW = geometry.size.width
-            let screenH = geometry.size.height
+            // Use animated screen size for smooth rotation interpolation
+            let screenW = animatedScreenSize.width > 0 ? animatedScreenSize.width : geometry.size.width
+            let screenH = animatedScreenSize.height > 0 ? animatedScreenSize.height : geometry.size.height
             let centerX = screenW / 2
             let centerY = screenH / 2
 
@@ -86,8 +92,44 @@ struct DeckView: View {
                             ? (isPeeked || viewModel.peekedCardID == nil)
                             : false
                     )
-                    .animation(.spring(response: 0.4, dampingFraction: 0.75), value: viewModel.phase)
-                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isPeeked)
+                }
+            }
+            // Detect geometry changes for smooth rotation interpolation
+            .onAppear {
+                guard !hasAppeared else { return }
+                animatedScreenSize = geometry.size
+                targetScreenSize = geometry.size
+                hasAppeared = true
+            }
+            .onChange(of: geometry.size) { newSize in
+                guard hasAppeared else { return }
+                guard newSize.width > 0 && newSize.height > 0 else { return }
+
+                let dx = newSize.width - targetScreenSize.width
+                let dy = newSize.height - targetScreenSize.height
+                let distance = sqrt(dx * dx + dy * dy)
+
+                if distance > 1 {
+                    // Meaningful size change (rotation) — spring-animate the screen size
+                    // Capture current animated position to handle mid-flight interrupts
+                    let _ = animatedScreenSize  // ensure current value is read
+
+                    targetScreenSize = newSize
+
+                    withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) {
+                        animatedScreenSize = newSize
+                    }
+
+                    // Trigger instant phase change
+                    if newSize.width > newSize.height {
+                        viewModel.onRotateToLandscape()
+                    } else {
+                        viewModel.onRotateToPortrait()
+                    }
+                } else {
+                    // Negligible change (safe area inset, etc.) — snap
+                    targetScreenSize = newSize
+                    animatedScreenSize = newSize
                 }
             }
         }
