@@ -249,11 +249,18 @@ final class TrickViewModel: ObservableObject {
     // MARK: - Shake-Driven Shuffle
 
     func onShakeStart() {
-        guard phase == .idle, chosenCard != nil else { return }
-        phase = .shuffling
+        guard chosenCard != nil else { return }
+        guard phase == .idle || phase == .shuffling else { return }
+
+        // If already shuffling from a previous shake, just restart the loop
+        if phase == .idle {
+            phase = .shuffling
+        }
         isShuffling = true
         shuffleOffsets = Array(repeating: 0, count: deck.count)
         shuffleLateral = Array(repeating: 0, count: deck.count)
+        shuffleWorkItem?.cancel()
+        shuffleWorkItem = nil
         startShuffleLoop()
     }
 
