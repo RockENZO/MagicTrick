@@ -26,7 +26,7 @@ struct CardView: View {
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
         .overlay(
             RoundedRectangle(cornerRadius: cornerRadius)
-                .stroke(Color.white.opacity(faceUp ? 0 : 0.08), lineWidth: 0.5)
+                .stroke(Color.white.opacity(faceUp ? 0 : 0.15), lineWidth: 0.5)
         )
         .shadow(color: .black.opacity(isDragging ? 0.6 : 0.35), radius: isDragging ? 14 : 5, x: 0, y: isDragging ? 10 : 3)
     }
@@ -34,16 +34,16 @@ struct CardView: View {
     // MARK: - Card Back — Apple Minimal
     private var cardBack: some View {
         ZStack {
-            // Solid deep navy
+            // Rich royal blue
             RoundedRectangle(cornerRadius: cornerRadius)
-                .fill(Color(red: 0.06, green: 0.09, blue: 0.16))
+                .fill(Color(red: 0.10, green: 0.15, blue: 0.30))
 
-            // Subtle radial sheen — like Apple's dark UI surfaces
+            // Radial sheen — brighter highlight
             RoundedRectangle(cornerRadius: cornerRadius)
                 .fill(
                     RadialGradient(
                         colors: [
-                            Color.white.opacity(0.04),
+                            Color.white.opacity(0.10),
                             Color.clear
                         ],
                         center: .topLeading,
@@ -54,12 +54,12 @@ struct CardView: View {
 
             // Thin inner border
             RoundedRectangle(cornerRadius: cornerRadius - 2)
-                .strokeBorder(Color.white.opacity(0.1), lineWidth: 0.5)
+                .strokeBorder(Color.white.opacity(0.18), lineWidth: 0.5)
                 .padding(4)
 
             // Centered diamond outline
             CardDiamond()
-                .stroke(Color.white.opacity(0.15), lineWidth: 0.8)
+                .stroke(Color.white.opacity(0.25), lineWidth: 0.8)
                 .frame(width: 16, height: 16)
 
             // Four corner dots
@@ -72,7 +72,7 @@ struct CardView: View {
 
     private func cornerDot(x: CGFloat, y: CGFloat) -> some View {
         Circle()
-            .fill(Color.white.opacity(0.2))
+            .fill(Color.white.opacity(0.35))
             .frame(width: 2.5, height: 2.5)
             .position(x: x, y: y)
     }
