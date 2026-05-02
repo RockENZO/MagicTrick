@@ -120,9 +120,9 @@ struct DeckView: View {
             return CardPosition(x: stackX, y: stackY, rotation: 0, scale: 1.0, zIndex: Double(index))
 
         case .shuffling:
-            // Wider stack during shuffle so lift is more visible
-            let stackX = centerX + CGFloat(index) * 0.8 - CGFloat(total) * 0.4
-            let stackY = centerY + CGFloat(index) * 1.2 - CGFloat(total) * 0.6
+            // Wider stack during shuffle — cards spread across screen for dramatic lift
+            let stackX = centerX + CGFloat(index) * 2.0 - CGFloat(total) * 1.0
+            let stackY = centerY + CGFloat(index) * 2.5 - CGFloat(total) * 1.25
             return CardPosition(x: stackX, y: stackY, rotation: 0, scale: 1.0, zIndex: Double(index))
 
         case .spread, .reveal:

@@ -265,36 +265,36 @@ final class TrickViewModel: ObservableObject {
         settleShuffle()
     }
 
-    /// Dramatic overhand riffle — staggered lifts, lateral spread, multi-phase cycle
+    /// Dramatic overhand riffle — big lifts, wide lateral spread, fast cadence
     private func startShuffleLoop() {
         guard isShuffling else { return }
 
         let count = deck.count
+        let halfPoint = count / 2
 
-        // Phase 1: Lift right half upward + offset laterally
+        // Phase 1: Lift right half HIGH with staggered heights + lateral fan
         var lifted: [CGFloat] = Array(repeating: 0, count: count)
         var lateral: [CGFloat] = Array(repeating: 0, count: count)
-        let halfPoint = count / 2
 
         for i in 0..<count {
             if i >= halfPoint {
-                lifted[i] = -70 - CGFloat(i - halfPoint) * 3  // Staggered rise
-                lateral[i] = 15  // Slight lateral offset
+                let progress = CGFloat(i - halfPoint) / CGFloat(halfPoint)
+                lifted[i] = -200 - progress * 120   // 200–320pt rise
+                lateral[i] = 30 + progress * 40      // 30–70pt lateral fan
             }
         }
 
-        withAnimation(.spring(response: 0.2, dampingFraction: 0.65)) {
+        withAnimation(.spring(response: 0.18, dampingFraction: 0.7)) {
             shuffleOffsets = lifted
             shuffleLateral = lateral
         }
 
         HapticManager.shared.shuffle()
 
-        // Phase 2: Interleave halves — drop cards back in with spring bounce
+        // Phase 2: Drop + interleave + spring bounce
         let workItem = DispatchWorkItem { [weak self] in
             guard let self = self, self.isShuffling else { return }
 
-            // Interleave: take cards from alternating halves
             let midpoint = count / 2
             let left = Array(self.deck[0..<midpoint])
             let right = Array(self.deck[midpoint..<count])
@@ -306,12 +306,21 @@ final class TrickViewModel: ObservableObject {
                 if i < left.count { interleaved.append(left[i]) }
             }
 
-            // Snap everything back with dramatic spring
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.55)) {
-                self.shuffleOffsets = Array(repeating: 0, count: count)
+            // Overshoot the drop slightly past 0 for a slam effect
+            withAnimation(.spring(response: 0.22, dampingFraction: 0.5)) {
+                self.shuffleOffsets = Array(repeating: 12, count: count)  // overshoot below
                 self.shuffleLateral = Array(repeating: 0, count: count)
                 self.deck = interleaved
             }
+
+            // Settle overshoot back to 0
+            let settleItem = DispatchWorkItem { [weak self] in
+                guard let self = self else { return }
+                withAnimation(.spring(response: 0.15, dampingFraction: 0.6)) {
+                    self.shuffleOffsets = Array(repeating: 0, count: count)
+                }
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.18, execute: settleItem)
 
             // Loop if still shaking
             let loopItem = DispatchWorkItem { [weak self] in
@@ -321,11 +330,11 @@ final class TrickViewModel: ObservableObject {
                 }
             }
             self.shuffleWorkItem = loopItem
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: loopItem)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: loopItem)
         }
 
         shuffleWorkItem = workItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2, execute: workItem)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18, execute: workItem)
     }
 
     /// When shaking stops, settle the deck with chosen card at known position
@@ -338,7 +347,7 @@ final class TrickViewModel: ObservableObject {
             settled.insert(removed, at: target)
         }
 
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
+        withAnimation(.spring(response: 0.45, dampingFraction: 0.65)) {
             shuffleOffsets = Array(repeating: 0, count: settled.count)
             shuffleLateral = Array(repeating: 0, count: settled.count)
             deck = settled
