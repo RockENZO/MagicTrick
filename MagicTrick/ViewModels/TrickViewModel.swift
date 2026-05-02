@@ -15,9 +15,9 @@ final class TrickViewModel: ObservableObject {
     @Published var shuffleLateral: [CGFloat] = []
     @Published var isShuffling = false
 
-    // Peek state — card being dragged, follows finger
+    // Peek state — card being dragged, follows finger (2D once flipped)
     @Published var peekedCardID: UUID? = nil
-    @Published var peekLift: CGFloat = 0        // Current Y offset (0 = rest, negative = up)
+    @Published var peekOffset: CGSize = .zero    // Current drag offset from original position
 
     // ★ THE SECRET: true only when corner is tapped during shuffling
     @Published var magicTriggered = false
@@ -50,7 +50,7 @@ final class TrickViewModel: ObservableObject {
         shuffleOffsets = []
         shuffleLateral = []
         peekedCardID = nil
-        peekLift = 0
+        peekOffset = .zero
         hasFlipped = false
         magicTriggered = false
         hasPickedCard = false
@@ -102,7 +102,7 @@ final class TrickViewModel: ObservableObject {
                 deck[idx].isFaceUp = false
             }
             peekedCardID = nil
-            peekLift = 0
+            peekOffset = .zero
             hasFlipped = false
 
             if hasRevealed || revealCard != nil {
@@ -140,7 +140,7 @@ final class TrickViewModel: ObservableObject {
         }
 
         peekedCardID = id
-        peekLift = 0
+        peekOffset = .zero
         hasFlipped = false
         HapticManager.shared.cardFlip()
 
@@ -150,12 +150,19 @@ final class TrickViewModel: ObservableObject {
         }
     }
 
-    /// Finger moved — update lift offset, flip at threshold
-    func updatePeekLift(to newLift: CGFloat) {
-        peekLift = newLift
+    /// Finger moved — update 2D offset, flip at Y threshold
+    func updatePeekOffset(to newOffset: CGSize) {
+        // Before flipping, only allow upward movement (Y < 0)
+        if !hasFlipped {
+            let clampedY = min(0, newOffset.height)
+            peekOffset = CGSize(width: 0, height: clampedY)
+        } else {
+            // After flipping, allow free 2D movement
+            peekOffset = newOffset
+        }
 
         // Flip card face-up once dragged past threshold
-        if newLift < -50 && !hasFlipped {
+        if peekOffset.height < -50 && !hasFlipped {
             hasFlipped = true
             if let id = peekedCardID, let idx = deck.firstIndex(where: { $0.id == id }) {
                 // ★ MAGIC: transform dragged card into audience's card
@@ -184,7 +191,7 @@ final class TrickViewModel: ObservableObject {
         if !hasFlipped {
             // Didn't drag far enough — just reset
             withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-                peekLift = 0
+                peekOffset = .zero
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
                 self?.peekedCardID = nil
@@ -193,21 +200,20 @@ final class TrickViewModel: ObservableObject {
         }
 
         if !hasPickedCard {
-            // SPECTATOR PICKING: card is face-up, start 1-second timer then gravitate back
+            // SPECTATOR PICKING: card is face-up, start 2-second timer then gravitate back
             let timer = DispatchWorkItem { [weak self] in
                 self?.endPeek()
             }
             peekTimer = timer
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: timer)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0, execute: timer)
         } else {
             // MAGICIAN REVEALING: reveal this card immediately
-            // (when magic triggered, chosen card is already at the far right)
             revealCard = deck[index]
             hasRevealed = true
 
             // Clear peek state
             peekedCardID = nil
-            peekLift = 0
+            peekOffset = .zero
             hasFlipped = false
 
             withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
@@ -234,9 +240,9 @@ final class TrickViewModel: ObservableObject {
 
         hasPickedCard = true
 
-        // Animate lift back to 0
+        // Animate card back to its spread position
         withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-            peekLift = 0
+            peekOffset = .zero
         }
 
         // Clear peeked card after flip animation

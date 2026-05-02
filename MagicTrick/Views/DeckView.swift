@@ -53,8 +53,8 @@ struct DeckView: View {
                         faceUp: isFaceUp
                     )
                     .position(
-                        x: layout.x + shuffleX,
-                        y: layout.y + (isPeeked ? viewModel.peekLift : 0) + shuffleY
+                        x: layout.x + shuffleX + (isPeeked ? viewModel.peekOffset.width : 0),
+                        y: layout.y + (isPeeked ? viewModel.peekOffset.height : 0) + shuffleY
                     )
                     .rotationEffect(.degrees(layout.rotation + shuffleRotation), anchor: .center)
                     .scaleEffect(isPeeked ? 1.08 : layout.scale)
@@ -69,10 +69,9 @@ struct DeckView: View {
                                     viewModel.beginPeek(id: card.id)
                                 }
 
-                                // Update lift offset — card follows finger upward
+                                // Update drag offset — before flip: Y only, after: full 2D
                                 if viewModel.peekedCardID == card.id {
-                                    let lift = min(0, value.translation.height)
-                                    viewModel.updatePeekLift(to: max(-100, lift))
+                                    viewModel.updatePeekOffset(to: value.translation)
                                 }
                             }
                             .onEnded { _ in
@@ -126,15 +125,16 @@ struct DeckView: View {
             return CardPosition(x: stackX, y: stackY, rotation: 0, scale: 1.0, zIndex: Double(index))
 
         case .spread, .reveal:
-            // Fan spread filling the entire screen width
-            let overlapSpace = screenW - cardWidth
+            // Fan spread — inset from edges to avoid Dynamic Island / safe area
+            let margin: CGFloat = cardWidth * 0.6
+            let usableWidth = screenW - cardWidth - margin * 2
             let spacing: CGFloat
             if total > 1 {
-                spacing = overlapSpace / CGFloat(total - 1)
+                spacing = usableWidth / CGFloat(total - 1)
             } else {
                 spacing = 0
             }
-            let x = (cardWidth / 2) + CGFloat(index) * spacing
+            let x = margin + (cardWidth / 2) + CGFloat(index) * spacing
             // Slight arc — cards in the middle are higher
             let normalizedPos = total > 1
                 ? (CGFloat(index) / CGFloat(total - 1)) * 2 - 1  // -1 to 1
