@@ -10,8 +10,9 @@ final class TrickViewModel: ObservableObject {
     @Published var chosenCard: Card? = nil
     @Published var revealCard: Card? = nil
 
-    // Shuffle animation state — per-card vertical offset for riffle effect
+    // Shuffle animation state — per-card vertical + lateral offset for riffle effect
     @Published var shuffleOffsets: [CGFloat] = []
+    @Published var shuffleLateral: [CGFloat] = []
     @Published var isShuffling = false
 
     // Peek state — card being dragged, follows finger
@@ -47,6 +48,7 @@ final class TrickViewModel: ObservableObject {
         revealCard = nil
         isShuffling = false
         shuffleOffsets = []
+        shuffleLateral = []
         peekedCardID = nil
         peekLift = 0
         hasFlipped = false
@@ -251,6 +253,7 @@ final class TrickViewModel: ObservableObject {
         phase = .shuffling
         isShuffling = true
         shuffleOffsets = Array(repeating: 0, count: deck.count)
+        shuffleLateral = Array(repeating: 0, count: deck.count)
         startShuffleLoop()
     }
 
@@ -262,27 +265,32 @@ final class TrickViewModel: ObservableObject {
         settleShuffle()
     }
 
-    /// Realistic overhand riffle — cards rise from alternating halves and drop back in
+    /// Dramatic overhand riffle — staggered lifts, lateral spread, multi-phase cycle
     private func startShuffleLoop() {
         guard isShuffling else { return }
 
         let count = deck.count
 
-        // Phase 1: Lift cards — odd-indexed rise up, even stay
+        // Phase 1: Lift right half upward + offset laterally
         var lifted: [CGFloat] = Array(repeating: 0, count: count)
+        var lateral: [CGFloat] = Array(repeating: 0, count: count)
+        let halfPoint = count / 2
+
         for i in 0..<count {
-            if i % 2 == 1 {
-                lifted[i] = -40  // Lift up (negative = upward in SwiftUI)
+            if i >= halfPoint {
+                lifted[i] = -70 - CGFloat(i - halfPoint) * 3  // Staggered rise
+                lateral[i] = 15  // Slight lateral offset
             }
         }
 
-        withAnimation(.easeInOut(duration: 0.2)) {
+        withAnimation(.spring(response: 0.2, dampingFraction: 0.65)) {
             shuffleOffsets = lifted
+            shuffleLateral = lateral
         }
 
         HapticManager.shared.shuffle()
 
-        // Phase 2: Drop lifted cards back and interleave
+        // Phase 2: Interleave halves — drop cards back in with spring bounce
         let workItem = DispatchWorkItem { [weak self] in
             guard let self = self, self.isShuffling else { return }
 
@@ -294,13 +302,14 @@ final class TrickViewModel: ObservableObject {
             var interleaved: [Card] = []
             let maxCount = max(left.count, right.count)
             for i in 0..<maxCount {
-                if i < left.count { interleaved.append(left[i]) }
                 if i < right.count { interleaved.append(right[i]) }
+                if i < left.count { interleaved.append(left[i]) }
             }
 
-            // Drop everything back to 0 offset
-            withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
+            // Snap everything back with dramatic spring
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.55)) {
                 self.shuffleOffsets = Array(repeating: 0, count: count)
+                self.shuffleLateral = Array(repeating: 0, count: count)
                 self.deck = interleaved
             }
 
@@ -312,11 +321,11 @@ final class TrickViewModel: ObservableObject {
                 }
             }
             self.shuffleWorkItem = loopItem
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35, execute: loopItem)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: loopItem)
         }
 
         shuffleWorkItem = workItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: workItem)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2, execute: workItem)
     }
 
     /// When shaking stops, settle the deck with chosen card at known position
@@ -329,8 +338,9 @@ final class TrickViewModel: ObservableObject {
             settled.insert(removed, at: target)
         }
 
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.7)) {
             shuffleOffsets = Array(repeating: 0, count: settled.count)
+            shuffleLateral = Array(repeating: 0, count: settled.count)
             deck = settled
         }
     }

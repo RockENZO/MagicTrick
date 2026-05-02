@@ -32,9 +32,17 @@ struct DeckView: View {
                     let isPeeked = viewModel.peekedCardID == card.id
                     let isFaceUp = card.isFaceUp
 
-                    // Shuffle vertical offset for this card (0 when not shuffling)
+                    // Shuffle offsets for this card (0 when not shuffling)
                     let shuffleY: CGFloat = (index < viewModel.shuffleOffsets.count)
                         ? viewModel.shuffleOffsets[index]
+                        : 0
+                    let shuffleX: CGFloat = (index < viewModel.shuffleLateral.count)
+                        ? viewModel.shuffleLateral[index]
+                        : 0
+
+                    // Shuffle rotation — cards flutter slightly while airborne
+                    let shuffleRotation: Double = shuffleY != 0
+                        ? Double(index % 5 - 2) * 2.5
                         : 0
 
                     CardView(
@@ -45,10 +53,10 @@ struct DeckView: View {
                         faceUp: isFaceUp
                     )
                     .position(
-                        x: layout.x,
+                        x: layout.x + shuffleX,
                         y: layout.y + (isPeeked ? viewModel.peekLift : 0) + shuffleY
                     )
-                    .rotationEffect(.degrees(layout.rotation), anchor: .center)
+                    .rotationEffect(.degrees(layout.rotation + shuffleRotation), anchor: .center)
                     .scaleEffect(isPeeked ? 1.08 : layout.scale)
                     .zIndex(isPeeked ? 1000 : layout.zIndex)
                     .gesture(
@@ -105,10 +113,16 @@ struct DeckView: View {
         centerY: CGFloat
     ) -> CardPosition {
         switch viewModel.phase {
-        case .idle, .shuffling:
+        case .idle:
             // Stacked deck — dead center, slight offset per card for depth feel
             let stackX = centerX + CGFloat(index) * 0.3 - CGFloat(total) * 0.15
             let stackY = centerY + CGFloat(index) * 0.5 - CGFloat(total) * 0.25
+            return CardPosition(x: stackX, y: stackY, rotation: 0, scale: 1.0, zIndex: Double(index))
+
+        case .shuffling:
+            // Wider stack during shuffle so lift is more visible
+            let stackX = centerX + CGFloat(index) * 0.8 - CGFloat(total) * 0.4
+            let stackY = centerY + CGFloat(index) * 1.2 - CGFloat(total) * 0.6
             return CardPosition(x: stackX, y: stackY, rotation: 0, scale: 1.0, zIndex: Double(index))
 
         case .spread, .reveal:
