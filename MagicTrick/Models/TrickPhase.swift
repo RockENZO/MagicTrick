@@ -13,4 +13,7 @@ enum TrickPhase: Equatable {
 
     /// Landscape, card being revealed
     case reveal
+
+    /// Portrait, card flipping back to deck from reveal
+    case returning
 }

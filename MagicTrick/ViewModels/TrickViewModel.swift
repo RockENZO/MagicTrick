@@ -74,6 +74,18 @@ final class TrickViewModel: ObservableObject {
         switch phase {
         case .idle:
             phase = .spread
+        case .returning:
+            // User rotated back to landscape mid-return — clean up round state
+            // and start fresh fan spread
+            for i in deck.indices where deck[i].isFaceUp {
+                deck[i].isFaceUp = false
+            }
+            chosenCard = nil
+            revealCard = nil
+            hasRevealed = false
+            hasPickedCard = false
+            magicTriggered = false
+            phase = .spread
         case .shuffling:
             isShuffling = false
             shuffleWorkItem?.cancel()
@@ -100,10 +112,9 @@ final class TrickViewModel: ObservableObject {
 
         switch phase {
         case .reveal:
-            // Keep withAnimation for RevealView opacity transition
-            withAnimation(.easeOut(duration: 0.3)) {
-                resetDeck()
-            }
+            // Phase change is instant — RevealView handles flip-back + slide animation
+            // and calls finishReturn() via callback when done
+            phase = .returning
         case .spread:
             if hasRevealed || revealCard != nil {
                 withAnimation(.easeOut(duration: 0.3)) {
@@ -278,6 +289,27 @@ final class TrickViewModel: ObservableObject {
         settleShuffle()
         // Transition to idle — explicit withAnimation since DeckView no longer uses .animation(value:) modifiers
         withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) {
+            phase = .idle
+        }
+    }
+
+    /// Called after the return animation completes — clean up and go to idle
+    func finishReturn() {
+        guard phase == .returning else { return }
+        // Reset any face-up deck cards (from the peek flow)
+        for i in deck.indices where deck[i].isFaceUp {
+            deck[i].isFaceUp = false
+        }
+        // Clear ALL round state so a new round can begin
+        chosenCard = nil
+        revealCard = nil
+        hasRevealed = false
+        hasPickedCard = false
+        magicTriggered = false   // Reset secret trigger — must double-tap again each round
+        peekedCardID = nil
+        peekOffset = .zero
+        hasFlipped = false
+        withAnimation(.easeOut(duration: 0.2)) {
             phase = .idle
         }
     }

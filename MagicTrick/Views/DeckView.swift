@@ -154,7 +154,7 @@ struct DeckView: View {
         centerY: CGFloat
     ) -> CardPosition {
         switch viewModel.phase {
-        case .idle:
+        case .idle, .returning:
             // Stacked deck — dead center, slight offset per card for depth feel
             let stackX = centerX + CGFloat(index) * 0.3 - CGFloat(total) * 0.15
             let stackY = centerY + CGFloat(index) * 0.5 - CGFloat(total) * 0.25

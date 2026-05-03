@@ -13,13 +13,20 @@ struct ContentView: View {
                 // Background gradient
                 backgroundGradient
 
-                // Main content — deck or reveal
-                if viewModel.phase == .reveal, let card = viewModel.revealCard {
-                    RevealView(card: card)
-                        .transition(.opacity)
-                } else {
-                    DeckView(viewModel: viewModel)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                // DeckView always present — stacked deck visible underneath during return
+                DeckView(viewModel: viewModel)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .zIndex(0)
+
+                // Reveal card — visible during both reveal and returning phases
+                // Single view instance so animation state (flip, appeared) persists
+                if viewModel.phase == .reveal || viewModel.phase == .returning, let card = viewModel.revealCard {
+                    RevealView(
+                        card: card,
+                        returning: viewModel.phase == .returning,
+                        onReturnFinished: { viewModel.finishReturn() }
+                    )
+                    .zIndex(10)
                 }
 
                 // Secret invisible trigger — top right corner, only during shuffling
