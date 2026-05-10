@@ -16,10 +16,6 @@ struct DeckView: View {
     @State private var targetScreenSize: CGSize = .zero
     @State private var hasAppeared = false
 
-    // Settling offsets — tiny random displacements that make the spread look natural
-    @State private var settleOffsets: [CGSize] = []
-    @State private var settleRotations: [Double] = []
-
     var body: some View {
         GeometryReader { geometry in
             // Use animated screen size for smooth rotation interpolation
@@ -50,35 +46,23 @@ struct DeckView: View {
                         ? viewModel.shuffleLateral[index]
                         : 0
 
-                    // Shuffle rotation — cards flutter while airborne, with per-card variation
+                    // Shuffle rotation — cards flutter while airborne
                     let shuffleRotation: Double = shuffleY != 0
-                        ? Double(index % 5 - 2) * 3.0 + Double(index % 3 - 1) * 1.5
+                        ? Double(index % 5 - 2) * 2.5
                         : 0
-
-                    // Settling offsets — only active in spread phase
-                    let sx: CGFloat = (index < settleOffsets.count) ? settleOffsets[index].width : 0
-                    let sy: CGFloat = (index < settleOffsets.count) ? settleOffsets[index].height : 0
-                    let sr: Double = (index < settleRotations.count) ? settleRotations[index] : 0
-
-                    // Elevation for dynamic shadow — based on shuffle lift + peek lift
-                    let elevation = shuffleY + (isPeeked ? -30 : 0)
 
                     CardView(
                         card: card,
                         width: cardWidth,
                         height: cardHeight,
                         isDragging: isPeeked,
-                        faceUp: isFaceUp,
-                        elevation: elevation
+                        faceUp: isFaceUp
                     )
                     .position(
-                        x: layout.x + shuffleX + sx + (isPeeked ? viewModel.peekOffset.width : 0),
-                        y: layout.y + sy + (isPeeked ? viewModel.peekOffset.height : 0) + shuffleY
+                        x: layout.x + shuffleX + (isPeeked ? viewModel.peekOffset.width : 0),
+                        y: layout.y + (isPeeked ? viewModel.peekOffset.height : 0) + shuffleY
                     )
-                    .rotationEffect(
-                        .degrees(layout.rotation + shuffleRotation + sr + (isPeeked ? peekRotation : 0)),
-                        anchor: .center
-                    )
+                    .rotationEffect(.degrees(layout.rotation + shuffleRotation + (isPeeked ? peekRotation : 0)), anchor: .center)
                     .scaleEffect(isPeeked ? 1.08 : layout.scale)
                     .zIndex(isPeeked ? 1000 : layout.zIndex)
                     .gesture(
@@ -133,17 +117,9 @@ struct DeckView: View {
                         animatedScreenSize = newSize
                     }
 
-                    // Clear settling offsets on rotation
-                    settleOffsets = []
-                    settleRotations = []
-
                     // Trigger instant phase change
                     if newSize.width > newSize.height {
                         viewModel.onRotateToLandscape()
-                        // Trigger settling animation after spread completes
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                            triggerSettle()
-                        }
                     } else {
                         viewModel.onRotateToPortrait()
                     }
@@ -161,32 +137,7 @@ struct DeckView: View {
     /// Card rotates slightly based on drag offset — feels like lifting a real card
     private var peekRotation: Double {
         let dx = viewModel.peekOffset.width
-        // Horizontal drag creates slight rotation (like tilting a card between fingers)
         return Double(dx) * 0.05
-    }
-
-    // MARK: - Settling Animation
-
-    /// Adds tiny random offsets so the spread looks like real cards, not a perfect grid
-    private func triggerSettle() {
-        let count = viewModel.deck.count
-        var offsets: [CGSize] = []
-        var rotations: [Double] = []
-
-        for i in 0..<count {
-            // Tiny random displacement — cards aren't perfectly aligned in real life
-            let ox = CGFloat.random(in: -1.5...1.5)
-            let oy = CGFloat.random(in: -1.0...1.0)
-            let rot = Double.random(in: -0.8...0.8)
-            offsets.append(CGSize(width: ox, height: oy))
-            rotations.append(rot)
-        }
-
-        // Animate settling with gentle springs
-        withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
-            settleOffsets = offsets
-            settleRotations = rotations
-        }
     }
 
     // MARK: - Card Layout (absolute screen positions)

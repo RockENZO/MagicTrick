@@ -1,117 +1,56 @@
 import SwiftUI
 
-/// A single playing card with realistic 3D flip, paper texture, and dynamic lighting
+/// A single playing card with face-up/face-down states.
+/// Optimized for rendering 52 cards simultaneously — expensive effects
+/// (3D perspective, dynamic shadows) are reserved for the peeked card only.
 struct CardView: View {
     let card: Card
     let width: CGFloat
     let height: CGFloat
     let isDragging: Bool
     let faceUp: Bool
-    /// Optional elevation (0 = resting, negative = lifted above). Affects shadow spread.
-    var elevation: CGFloat = 0
 
     private var cornerRadius: CGFloat { width * 0.08 }
-    /// Shadow radius scales with how high the card is "lifted" off the table
-    private var shadowRadius: CGFloat {
-        let base: CGFloat = isDragging ? 14 : 5
-        let liftBonus = abs(elevation) * 0.04
-        return base + liftBonus
-    }
-    private var shadowOffsetY: CGFloat {
-        let base: CGFloat = isDragging ? 10 : 3
-        let liftBonus = abs(elevation) * 0.025
-        return base + liftBonus
-    }
-    private var shadowOpacity: Double {
-        let base: Double = isDragging ? 0.6 : 0.35
-        let liftBonus = Double(abs(elevation)) * 0.001
-        return min(base + liftBonus, 0.8)
-    }
 
     var body: some View {
         ZStack {
             // Card back (visible when face-down)
             cardBack
                 .opacity(faceUp ? 0 : 1)
-                .rotation3DEffect(
-                    .degrees(faceUp ? 90 : 0),
-                    axis: (x: 0, y: 1, z: 0),
-                    perspective: 0.5
-                )
 
             // Card face (visible when face-up)
             cardFace
                 .opacity(faceUp ? 1 : 0)
-                .rotation3DEffect(
-                    .degrees(faceUp ? 0 : -90),
-                    axis: (x: 0, y: 1, z: 0),
-                    perspective: 0.5
-                )
-
-            // Light sweep highlight — flashes across the card during flip
-            if faceUp {
-                RoundedRectangle(cornerRadius: cornerRadius)
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                .white.opacity(0.0),
-                                .white.opacity(0.18),
-                                .white.opacity(0.0)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .opacity(faceUp ? 1 : 0)
-                    .blendMode(.screen)
-                    .allowsHitTesting(false)
-            }
         }
         .frame(width: width, height: height)
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
-        // Card edge — thin white rim simulates paper edge thickness
         .overlay(
             RoundedRectangle(cornerRadius: cornerRadius)
-                .stroke(
-                    Color.white.opacity(faceUp ? 0.08 : 0.15),
-                    lineWidth: faceUp ? 0.5 : 0.8
-                )
+                .stroke(Color.white.opacity(faceUp ? 0.05 : 0.12), lineWidth: 0.5)
         )
-        // Paper edge stack effect when face-down (multiple card illusion)
-        .overlay(
-            Group {
-                if !faceUp {
-                    RoundedRectangle(cornerRadius: cornerRadius)
-                        .stroke(Color.white.opacity(0.06), lineWidth: 1.5)
-                        .offset(y: 1.5)
-                        .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
-                }
-            }
-        )
+        // Shadow — lightweight for deck cards, elevated only when dragging
         .shadow(
-            color: .black.opacity(shadowOpacity),
-            radius: shadowRadius,
+            color: .black.opacity(isDragging ? 0.55 : 0.3),
+            radius: isDragging ? 12 : 4,
             x: 0,
-            y: shadowOffsetY
+            y: isDragging ? 8 : 2
         )
     }
 
-    // MARK: - Card Back — Realistic Playing Card
+    // MARK: - Card Back
 
     private var cardBack: some View {
         ZStack {
-            // Rich royal blue base
+            // Rich royal blue
             RoundedRectangle(cornerRadius: cornerRadius)
                 .fill(Color(red: 0.10, green: 0.15, blue: 0.30))
 
-            // Subtle paper texture — fine cross-hatch pattern
+            // Sheen highlight from top-left
             RoundedRectangle(cornerRadius: cornerRadius)
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color.white.opacity(0.03),
-                            Color.clear,
-                            Color.white.opacity(0.02),
+                            Color.white.opacity(0.08),
                             Color.clear
                         ],
                         startPoint: .topLeading,
@@ -119,29 +58,10 @@ struct CardView: View {
                     )
                 )
 
-            // Radial sheen — light source from top-left
-            RoundedRectangle(cornerRadius: cornerRadius)
-                .fill(
-                    RadialGradient(
-                        colors: [
-                            Color.white.opacity(0.12),
-                            Color.clear
-                        ],
-                        center: .topLeading,
-                        startRadius: 0,
-                        endRadius: width * 0.8
-                    )
-                )
-
-            // Thin inner border — classic card back frame
+            // Thin inner border
             RoundedRectangle(cornerRadius: cornerRadius - 2)
                 .strokeBorder(Color.white.opacity(0.18), lineWidth: 0.5)
                 .padding(4)
-
-            // Inner decorative border
-            RoundedRectangle(cornerRadius: cornerRadius - 5)
-                .strokeBorder(Color.white.opacity(0.08), lineWidth: 0.3)
-                .padding(7)
 
             // Centered diamond outline
             CardDiamond()
@@ -163,27 +83,12 @@ struct CardView: View {
             .position(x: x, y: y)
     }
 
-    // MARK: - Card Face — Realistic Paper Stock
+    // MARK: - Card Face
 
     private var cardFace: some View {
         ZStack {
-            // Cream white paper background
+            // Cream white background
             Color(red: 0.97, green: 0.97, blue: 0.95)
-
-            // Subtle paper grain texture
-            RoundedRectangle(cornerRadius: cornerRadius)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color.black.opacity(0.015),
-                            Color.clear,
-                            Color.black.opacity(0.01),
-                            Color.clear
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
 
             // Top-left pip
             VStack(alignment: .leading, spacing: 1) {
