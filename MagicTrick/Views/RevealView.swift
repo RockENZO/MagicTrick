@@ -1,7 +1,9 @@
 import SwiftUI
 
-/// Reveal overlay — card flips face-up. On return, performs a single-card shuffle
-/// animation: flip face-down → lift → sweep → drop into deck with spring bounce.
+/// Reveal overlay — card flips face-up with dramatic 3D perspective.
+/// On return, performs a single-card shuffle animation: flip face-down → lift →
+/// sweep → drop into deck with spring bounce — like a real overhand return.
+/// 3D effects are used here (single card) but NOT in DeckView (52 cards).
 struct RevealView: View {
     let card: Card
     var returning: Bool = false
@@ -10,6 +12,7 @@ struct RevealView: View {
     // Reveal entrance state
     @State private var appeared = false
     @State private var flipAngle: Double = 90
+    @State private var revealScale: CGFloat = 0.85
 
     // Return animation state
     @State private var isFaceDown = false
@@ -38,7 +41,7 @@ struct RevealView: View {
             Color.black.opacity(overlayOpacity)
                 .ignoresSafeArea()
 
-            // Card positioned freely in center for shuffle motion
+            // Card with 3D flip — perspective is fine here (single card)
             CardView(
                 card: card,
                 width: revealCardWidth,
@@ -49,11 +52,16 @@ struct RevealView: View {
             .rotation3DEffect(.degrees(flipAngle), axis: (x: 0, y: 1, z: 0), perspective: 0.5)
             .rotationEffect(.degrees(cardRotation))
             .offset(x: cardOffsetX, y: cardOffsetY)
-            .scaleEffect(cardScale)
-            .shadow(color: .black.opacity(returnPhase == .idle ? 0.5 : 0.2), radius: returnPhase == .idle ? 20 : 8, x: 0, y: returnPhase == .idle ? 10 : 4)
+            .scaleEffect(cardScale * revealScale)
+            .shadow(
+                color: .black.opacity(returnPhase == .idle ? 0.45 : 0.2),
+                radius: returnPhase == .idle ? 16 : 6,
+                x: 0,
+                y: returnPhase == .idle ? 8 : 3
+            )
             .opacity(cardOpacity)
 
-            // Card name — below card position
+            // Card name
             Text(card.fullName)
                 .font(.system(size: 28, weight: .bold, design: .rounded))
                 .foregroundColor(.white)
@@ -61,14 +69,7 @@ struct RevealView: View {
                 .offset(y: 160)
         }
         .onAppear {
-            // Reveal entrance: card flips face-up
-            withAnimation(.easeOut(duration: 0.4)) {
-                appeared = true
-                labelOpacity = 1.0
-            }
-            withAnimation(.easeInOut(duration: 0.5).delay(0.3)) {
-                flipAngle = 0
-            }
+            runRevealEntrance()
         }
         .onChange(of: returning) { isReturning in
             guard isReturning else { return }
@@ -76,65 +77,91 @@ struct RevealView: View {
         }
     }
 
+    // MARK: - Reveal Entrance
+
+    private func runRevealEntrance() {
+        withAnimation(.easeOut(duration: 0.35)) {
+            appeared = true
+            labelOpacity = 1.0
+        }
+
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.65)) {
+            revealScale = 1.0
+        }
+
+        withAnimation(.spring(response: 0.55, dampingFraction: 0.72).delay(0.15)) {
+            flipAngle = 0
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            HapticManager.shared.cardFlip()
+        }
+    }
+
     // MARK: - Single-Card Shuffle Return
 
     private func runReturnShuffle() {
-        // Hide label immediately
         withAnimation(.easeOut(duration: 0.15)) {
             labelOpacity = 0
         }
 
         // --- Phase 1: Flip face-down ---
         returnPhase = .flipping
-        withAnimation(.easeIn(duration: 0.22)) {
-            flipAngle = 90   // edge — card vanishes
+        withAnimation(.easeIn(duration: 0.2)) {
+            flipAngle = 90
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
             isFaceDown = true
-            withAnimation(.easeOut(duration: 0.22)) {
-                flipAngle = 0  // complete flip
+            withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
+                flipAngle = 0
             }
+            HapticManager.shared.cardFlip()
         }
 
-        // --- Phase 2: Lift up (like picking up in overhand shuffle) ---
+        // --- Phase 2: Lift ---
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             returnPhase = .lifting
             HapticManager.shared.shuffle()
-            withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
-                cardOffsetY = -200       // lift high
-                cardRotation = -6        // slight tilt (held angle)
-                cardOffsetX = -15        // slight left lean
+            withAnimation(.spring(response: 0.22, dampingFraction: 0.68)) {
+                cardOffsetY = -180
+                cardRotation = -5
+                cardOffsetX = -12
             }
         }
 
-        // --- Phase 3: Sweep right (draw across the deck) ---
+        // --- Phase 3: Sweep right ---
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.72) {
             returnPhase = .sweeping
-            withAnimation(.easeInOut(duration: 0.22)) {
-                cardOffsetX = 50         // sweep right
-                cardOffsetY = -140       // lower slightly
-                cardRotation = 4         // tilt other way
+            withAnimation(.easeInOut(duration: 0.25)) {
+                cardOffsetX = 45
+                cardOffsetY = -120
+                cardRotation = 3.5
             }
         }
 
-        // --- Phase 4: Drop into stack with spring bounce ---
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.98) {
+        // --- Phase 4: Drop with spring bounce ---
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             returnPhase = .dropping
             HapticManager.shared.shuffle()
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
-                cardOffsetY = 0          // drop to center (deck position)
-                cardOffsetX = 0          // snap to center
-                cardRotation = 0         // straighten
-                cardScale = deckRatio    // shrink to deck card size
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.55)) {
+                cardOffsetY = 8
+                cardOffsetX = 0
+                cardRotation = 0.5
+                cardScale = deckRatio
             }
-            // Fade overlay as card lands
-            withAnimation(.easeOut(duration: 0.3)) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                withAnimation(.spring(response: 0.15, dampingFraction: 0.65)) {
+                    cardOffsetY = 0
+                    cardRotation = 0
+                }
+            }
+            withAnimation(.easeOut(duration: 0.35)) {
                 overlayOpacity = 0
             }
         }
 
-        // --- Phase 5: Fade card out (deck visible underneath) ---
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.35) {
+        // --- Phase 5: Fade out ---
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) {
             returnPhase = .fading
             withAnimation(.easeOut(duration: 0.2)) {
                 cardOpacity = 0
@@ -142,7 +169,7 @@ struct RevealView: View {
         }
 
         // --- Cleanup ---
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.65) {
             onReturnFinished?()
         }
     }

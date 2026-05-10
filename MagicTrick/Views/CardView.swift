@@ -1,6 +1,8 @@
 import SwiftUI
 
-/// A single playing card with face-up/face-down states
+/// A single playing card with face-up/face-down states.
+/// Optimized for rendering 52 cards simultaneously — expensive effects
+/// (3D perspective, dynamic shadows) are reserved for the peeked card only.
 struct CardView: View {
     let card: Card
     let width: CGFloat
@@ -15,40 +17,44 @@ struct CardView: View {
             // Card back (visible when face-down)
             cardBack
                 .opacity(faceUp ? 0 : 1)
-                .rotation3DEffect(.degrees(faceUp ? 90 : 0), axis: (x: 0, y: 1, z: 0))
 
             // Card face (visible when face-up)
             cardFace
                 .opacity(faceUp ? 1 : 0)
-                .rotation3DEffect(.degrees(faceUp ? 0 : -90), axis: (x: 0, y: 1, z: 0))
         }
         .frame(width: width, height: height)
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
         .overlay(
             RoundedRectangle(cornerRadius: cornerRadius)
-                .stroke(Color.white.opacity(faceUp ? 0 : 0.15), lineWidth: 0.5)
+                .stroke(Color.white.opacity(faceUp ? 0.05 : 0.12), lineWidth: 0.5)
         )
-        .shadow(color: .black.opacity(isDragging ? 0.6 : 0.35), radius: isDragging ? 14 : 5, x: 0, y: isDragging ? 10 : 3)
+        // Shadow — lightweight for deck cards, elevated only when dragging
+        .shadow(
+            color: .black.opacity(isDragging ? 0.55 : 0.3),
+            radius: isDragging ? 12 : 4,
+            x: 0,
+            y: isDragging ? 8 : 2
+        )
     }
 
-    // MARK: - Card Back — Apple Minimal
+    // MARK: - Card Back
+
     private var cardBack: some View {
         ZStack {
             // Rich royal blue
             RoundedRectangle(cornerRadius: cornerRadius)
                 .fill(Color(red: 0.10, green: 0.15, blue: 0.30))
 
-            // Radial sheen — brighter highlight
+            // Sheen highlight from top-left
             RoundedRectangle(cornerRadius: cornerRadius)
                 .fill(
-                    RadialGradient(
+                    LinearGradient(
                         colors: [
-                            Color.white.opacity(0.10),
+                            Color.white.opacity(0.08),
                             Color.clear
                         ],
-                        center: .topLeading,
-                        startRadius: 0,
-                        endRadius: width * 0.8
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
                     )
                 )
 
@@ -78,6 +84,7 @@ struct CardView: View {
     }
 
     // MARK: - Card Face
+
     private var cardFace: some View {
         ZStack {
             // Cream white background

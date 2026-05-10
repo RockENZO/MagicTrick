@@ -26,21 +26,49 @@ final class HapticManager {
     }
 
     // MARK: - Card Flip
-    /// Light tap when a card flips face-up or face-down
+    /// Light tap when a card flips face-up or face-down — like a fingernail tap on paper
     func cardFlip() {
         let generator = UIImpactFeedbackGenerator(style: .light)
-        generator.impactOccurred()
+        generator.impactOccurred(intensity: 0.7)
+    }
+
+    // MARK: - Card Snap
+    /// Quick rigid impact when a card snaps into position (e.g. settling after drag)
+    func cardSnap() {
+        let generator = UIImpactFeedbackGenerator(style: .rigid)
+        generator.impactOccurred(intensity: 0.5)
+    }
+
+    // MARK: - Card Lift
+    /// Soft impact when lifting a card off the table/fan
+    func cardLift() {
+        let generator = UIImpactFeedbackGenerator(style: .soft)
+        generator.impactOccurred(intensity: 0.4)
+    }
+
+    // MARK: - Card Drop
+    /// Medium impact when a card lands on the deck — like paper hitting felt
+    func cardDrop() {
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.impactOccurred(intensity: 0.8)
     }
 
     // MARK: - Shuffle
-    /// Medium impact during shuffle animation
+    /// Medium impact during shuffle animation — rhythmic paper riffle feel
     func shuffle() {
         let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.impactOccurred()
+        generator.impactOccurred(intensity: 0.6)
+    }
+
+    // MARK: - Shuffle Settle
+    /// Soft impact when the deck settles after shuffling
+    func shuffleSettle() {
+        let generator = UIImpactFeedbackGenerator(style: .soft)
+        generator.impactOccurred(intensity: 0.5)
     }
 
     // MARK: - Reveal
-    /// Success notification when the card is revealed
+    /// Success notification when the card is revealed — triumphant feel
     func reveal() {
         let generator = UINotificationFeedbackGenerator()
         generator.notificationOccurred(.success)

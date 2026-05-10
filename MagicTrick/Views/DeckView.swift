@@ -46,7 +46,7 @@ struct DeckView: View {
                         ? viewModel.shuffleLateral[index]
                         : 0
 
-                    // Shuffle rotation — cards flutter slightly while airborne
+                    // Shuffle rotation — cards flutter while airborne
                     let shuffleRotation: Double = shuffleY != 0
                         ? Double(index % 5 - 2) * 2.5
                         : 0
@@ -62,7 +62,7 @@ struct DeckView: View {
                         x: layout.x + shuffleX + (isPeeked ? viewModel.peekOffset.width : 0),
                         y: layout.y + (isPeeked ? viewModel.peekOffset.height : 0) + shuffleY
                     )
-                    .rotationEffect(.degrees(layout.rotation + shuffleRotation), anchor: .center)
+                    .rotationEffect(.degrees(layout.rotation + shuffleRotation + (isPeeked ? peekRotation : 0)), anchor: .center)
                     .scaleEffect(isPeeked ? 1.08 : layout.scale)
                     .zIndex(isPeeked ? 1000 : layout.zIndex)
                     .gesture(
@@ -111,9 +111,6 @@ struct DeckView: View {
 
                 if distance > 1 {
                     // Meaningful size change (rotation) — spring-animate the screen size
-                    // Capture current animated position to handle mid-flight interrupts
-                    let _ = animatedScreenSize  // ensure current value is read
-
                     targetScreenSize = newSize
 
                     withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) {
@@ -133,6 +130,14 @@ struct DeckView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Peek Rotation (physics-based tilt from drag)
+
+    /// Card rotates slightly based on drag offset — feels like lifting a real card
+    private var peekRotation: Double {
+        let dx = viewModel.peekOffset.width
+        return Double(dx) * 0.05
     }
 
     // MARK: - Card Layout (absolute screen positions)
@@ -177,18 +182,25 @@ struct DeckView: View {
                 spacing = 0
             }
             let x = margin + (cardWidth / 2) + CGFloat(index) * spacing
-            // Slight arc — cards in the middle are higher
+
+            // Natural fan arc — cards in the middle are higher, edges droop
             let normalizedPos = total > 1
                 ? (CGFloat(index) / CGFloat(total - 1)) * 2 - 1  // -1 to 1
                 : 0
-            let yOffset = abs(normalizedPos) * 20  // Arc: edges curve down
-            // Gentle rotation for fan effect
+            let arcCurve = normalizedPos * normalizedPos  // Parabolic arc
+            let yOffset = arcCurve * 25  // Edges curve down 25pt
+
+            // Fan rotation — each card angles slightly, like a real hand of cards
             let rotation = normalizedPos * 8  // max ±8 degrees
+
+            // Perspective depth — edge cards very slightly smaller (subtle foreshortening)
+            let edgeScale = 1.0 - abs(normalizedPos) * 0.015
+
             return CardPosition(
                 x: x,
                 y: centerY + yOffset,
                 rotation: rotation,
-                scale: 1.0,
+                scale: edgeScale,
                 zIndex: Double(index)
             )
         }
