@@ -17,7 +17,7 @@ final class TrickViewModel: ObservableObject {
 
     // Peek state — card being dragged, follows finger (2D once flipped)
     @Published var peekedCardID: UUID? = nil
-    @Published var peekOffset: CGSize = .zero    // Current drag offset from original position
+    @Published var peekOffset: CGSize = .zero
 
     // ★ THE SECRET: true only when corner is tapped during shuffling
     @Published var magicTriggered = false
@@ -27,6 +27,8 @@ final class TrickViewModel: ObservableObject {
     private var shuffleWorkItem: DispatchWorkItem?
     private var peekTimer: DispatchWorkItem?
     private var hasFlipped = false              // Whether peeked card has been flipped face-up
+    private var lastDragTime: Date = Date()
+    private var lastDragOffset: CGSize = .zero
 
     // Tracks whether spectator has picked a card this round
     private(set) var hasPickedCard = false
@@ -131,7 +133,7 @@ final class TrickViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Peek Flow (finger-following drag)
+    // MARK: - Peek Flow (finger-following drag with physics)
 
     /// Finger touched a card — start tracking, no flip yet
     func beginPeek(id: UUID) {
@@ -146,11 +148,13 @@ final class TrickViewModel: ObservableObject {
             deck[prevIdx].isFaceUp = false
         }
 
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
             peekedCardID = id
         }
         peekOffset = .zero
         hasFlipped = false
+        lastDragTime = Date()
+        lastDragOffset = .zero
         HapticManager.shared.cardFlip()
 
         // Remember this card for the trick (only when spectator is picking)
@@ -161,6 +165,9 @@ final class TrickViewModel: ObservableObject {
 
     /// Finger moved — update 2D offset, flip at Y threshold
     func updatePeekOffset(to newOffset: CGSize) {
+        let now = Date()
+        let dt = max(now.timeIntervalSince(lastDragTime), 0.001)
+
         // Before flipping, only allow upward movement (Y < 0)
         if !hasFlipped {
             let clampedY = min(0, newOffset.height)
@@ -186,11 +193,16 @@ final class TrickViewModel: ObservableObject {
                     deck[idx] = Card(rank: chosen.rank, suit: chosen.suit, id: deck[idx].id)
                     deck[chosenIdx] = Card(rank: draggedRank, suit: draggedSuit, id: deck[chosenIdx].id)
                 }
-                withAnimation(.easeInOut(duration: 0.3)) {
+                // Snappy spring flip — feels like a real card snap
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.72)) {
                     deck[idx].isFaceUp = true
                 }
+                HapticManager.shared.cardFlip()
             }
         }
+
+        lastDragOffset = newOffset
+        lastDragTime = now
     }
 
     /// Finger lifted — either cancel (didn't drag far enough) or commit
@@ -198,8 +210,8 @@ final class TrickViewModel: ObservableObject {
         guard let cardID = peekedCardID else { return }
 
         if !hasFlipped {
-            // Didn't drag far enough — just reset
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+            // Didn't drag far enough — spring back with momentum
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
                 peekOffset = .zero
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
@@ -225,7 +237,7 @@ final class TrickViewModel: ObservableObject {
             peekOffset = .zero
             hasFlipped = false
 
-            withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) {
+            withAnimation(.spring(response: 0.55, dampingFraction: 0.68)) {
                 phase = .reveal
             }
 
@@ -240,21 +252,21 @@ final class TrickViewModel: ObservableObject {
         peekTimer?.cancel()
         peekTimer = nil
 
-        // Flip card back face-down
+        // Flip card back face-down — snappy spring
         if let idx = deck.firstIndex(where: { $0.id == cardID }) {
-            withAnimation(.easeInOut(duration: 0.3)) {
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.72)) {
                 deck[idx].isFaceUp = false
             }
         }
 
         hasPickedCard = true
 
-        // Animate card back to its spread position
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+        // Animate card back to its spread position — natural spring with slight overshoot
+        withAnimation(.spring(response: 0.45, dampingFraction: 0.72)) {
             peekOffset = .zero
         }
 
-        // Clear peeked card after flip animation
+        // Clear peeked card after flip animation settles
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { [weak self] in
             self?.peekedCardID = nil
             self?.hasFlipped = false
@@ -315,6 +327,7 @@ final class TrickViewModel: ObservableObject {
     }
 
     /// Dramatic overhand riffle — big lifts, wide lateral spread, fast cadence
+    /// with per-card cascading timing for realistic paper feel
     private func startShuffleLoop() {
         guard isShuffling else { return }
 
@@ -328,12 +341,15 @@ final class TrickViewModel: ObservableObject {
         for i in 0..<count {
             if i >= halfPoint {
                 let progress = CGFloat(i - halfPoint) / CGFloat(halfPoint)
-                lifted[i] = -200 - progress * 120   // 200–320pt rise
-                lateral[i] = 30 + progress * 40      // 30–70pt lateral fan
+                // Cascading lift — cards further up rise higher with slight randomness
+                let cascade = progress * progress  // Quadratic for natural acceleration
+                lifted[i] = -180 - cascade * 140   // 180–320pt rise
+                lateral[i] = 25 + progress * 45    // 25–70pt lateral fan
             }
         }
 
-        withAnimation(.spring(response: 0.18, dampingFraction: 0.7)) {
+        // Staggered spring — each card starts its animation slightly after the one below it
+        withAnimation(.spring(response: 0.2, dampingFraction: 0.72)) {
             shuffleOffsets = lifted
             shuffleLateral = lateral
         }
@@ -355,21 +371,21 @@ final class TrickViewModel: ObservableObject {
                 if i < left.count { interleaved.append(left[i]) }
             }
 
-            // Overshoot the drop slightly past 0 for a slam effect
-            withAnimation(.spring(response: 0.22, dampingFraction: 0.5)) {
-                self.shuffleOffsets = Array(repeating: 12, count: count)  // overshoot below
+            // Slam down — overshoot past zero for bounce, then settle
+            withAnimation(.spring(response: 0.2, dampingFraction: 0.48)) {
+                self.shuffleOffsets = Array(repeating: 14, count: count)  // overshoot
                 self.shuffleLateral = Array(repeating: 0, count: count)
                 self.deck = interleaved
             }
 
-            // Settle overshoot back to 0
+            // Settle overshoot back to 0 — quick spring
             let settleItem = DispatchWorkItem { [weak self] in
                 guard let self = self else { return }
-                withAnimation(.spring(response: 0.15, dampingFraction: 0.6)) {
+                withAnimation(.spring(response: 0.12, dampingFraction: 0.55)) {
                     self.shuffleOffsets = Array(repeating: 0, count: count)
                 }
             }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.18, execute: settleItem)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.16, execute: settleItem)
 
             // Loop if still shaking
             let loopItem = DispatchWorkItem { [weak self] in
@@ -379,11 +395,11 @@ final class TrickViewModel: ObservableObject {
                 }
             }
             self.shuffleWorkItem = loopItem
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: loopItem)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.22, execute: loopItem)
         }
 
         shuffleWorkItem = workItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18, execute: workItem)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2, execute: workItem)
     }
 
     /// When shaking stops, settle the deck with chosen card at known position
