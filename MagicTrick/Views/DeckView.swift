@@ -16,6 +16,8 @@ struct DeckView: View {
 
     // Gesture state
     @State private var touchStartY: CGFloat = 0
+    @State private var touchStartX: CGFloat = 0
+    @State private var hoverEntryCardID: UUID? = nil  // Card that was hovered when touchStartY was set
 
     var body: some View {
         GeometryReader { geometry in
@@ -87,11 +89,6 @@ struct DeckView: View {
                         if viewModel.peekedCardID == nil {
                             // --- HOVER MODE: finger is browsing the fan ---
 
-                            // Record Y at first touch
-                            if viewModel.hoveredCardID == nil {
-                                touchStartY = location.y
-                            }
-
                             // Hit-test: which card is under the finger?
                             if let cardIndex = hitTestCard(
                                 x: location.x,
@@ -102,14 +99,28 @@ struct DeckView: View {
                                 let cardID = viewModel.deck[cardIndex].id
 
                                 if viewModel.hoveredCardID != cardID {
-                                    // Finger moved to a new card — switch hover
+                                    // Finger moved to a new card — reset swipe tracking for this card
                                     viewModel.updateHover(to: cardID)
+                                    touchStartY = location.y
+                                    touchStartX = location.x
+                                    hoverEntryCardID = cardID
                                 }
 
-                                // Check for swipe-up: finger moved upward past threshold
+                                // Record start on first touch
+                                if hoverEntryCardID == nil {
+                                    touchStartY = location.y
+                                    touchStartX = location.x
+                                    hoverEntryCardID = cardID
+                                }
+
+                                // Check for deliberate swipe-up on THIS card:
+                                // - Upward delta from where finger entered this card
+                                // - Must be mostly vertical (not a horizontal swipe)
                                 let upwardDelta = touchStartY - location.y
-                                if upwardDelta > 40 {
-                                    // Transition from hover → peek
+                                let horizontalDelta = abs(location.x - touchStartX)
+                                let isDeliberateSwipeUp = upwardDelta > 40 && upwardDelta > horizontalDelta * 1.5
+
+                                if isDeliberateSwipeUp {
                                     viewModel.beginPeek(id: cardID, touchLocation: location)
                                 }
                             } else {
@@ -133,6 +144,7 @@ struct DeckView: View {
                             // Clear hover on finger lift
                             viewModel.endHover()
                         }
+                        hoverEntryCardID = nil
                     }
             )
             // Detect geometry changes for smooth rotation interpolation
@@ -158,6 +170,7 @@ struct DeckView: View {
                     if newSize.width > newSize.height {
                         viewModel.onRotateToLandscape()
                     } else {
+                        hoverEntryCardID = nil
                         viewModel.onRotateToPortrait()
                     }
                 } else {
