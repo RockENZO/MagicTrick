@@ -75,6 +75,8 @@ struct DeckView: View {
                     .allowsHitTesting(false)  // Parent gesture handles all input
                 }
             }
+            .frame(width: screenW, height: screenH)  // Explicit frame for gesture area
+            .contentShape(Rectangle())  // Ensure gesture area matches frame
             // Single parent gesture — handles both hover browsing and peek dragging
             .gesture(
                 DragGesture(minimumDistance: 0)
