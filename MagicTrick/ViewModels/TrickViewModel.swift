@@ -9,6 +9,7 @@ final class TrickViewModel: ObservableObject {
     @Published var phase: TrickPhase = .idle
     @Published var chosenCard: Card? = nil
     @Published var revealCard: Card? = nil
+    @Published var colorScheme: CardColorScheme = .midnight
 
     // Shuffle animation state — per-card vertical + lateral offset for riffle effect
     @Published var shuffleOffsets: [CGFloat] = []
@@ -472,5 +473,13 @@ final class TrickViewModel: ObservableObject {
         HapticManager.shared.magicSignal()
         // Note: phase doesn't change here — shuffling continues.
         // Phase will change on rotate-to-landscape (spread) or on shake-end (idle).
+    }
+
+    // MARK: - Color Scheme
+    func cycleColorScheme() {
+        let all = CardColorScheme.allCases
+        let next = (colorScheme.id + 1) % all.count
+        colorScheme = all[next]
+        HapticManager.shared.cardFlip()
     }
 }

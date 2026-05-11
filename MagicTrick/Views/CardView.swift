@@ -10,6 +10,7 @@ struct CardView: View {
     let isDragging: Bool
     let faceUp: Bool
     var isHovered: Bool = false
+    var colorScheme: CardColorScheme = .midnight
 
     private var cornerRadius: CGFloat { width * 0.08 }
 
@@ -42,16 +43,16 @@ struct CardView: View {
 
     private var cardBack: some View {
         ZStack {
-            // Rich royal blue
+            // Base color from scheme
             RoundedRectangle(cornerRadius: cornerRadius)
-                .fill(Color(red: 0.10, green: 0.15, blue: 0.30))
+                .fill(colorScheme.cardBackBase)
 
             // Sheen highlight from top-left
             RoundedRectangle(cornerRadius: cornerRadius)
                 .fill(
                     LinearGradient(
                         colors: [
-                            Color.white.opacity(0.08),
+                            Color.white.opacity(colorScheme.cardBackSheenOpacity),
                             Color.clear
                         ],
                         startPoint: .topLeading,
@@ -61,12 +62,12 @@ struct CardView: View {
 
             // Thin inner border
             RoundedRectangle(cornerRadius: cornerRadius - 2)
-                .strokeBorder(Color.white.opacity(0.18), lineWidth: 0.5)
+                .strokeBorder(Color.white.opacity(colorScheme.cardBorderOpacity), lineWidth: 0.5)
                 .padding(4)
 
             // Centered diamond outline
             CardDiamond()
-                .stroke(Color.white.opacity(0.25), lineWidth: 0.8)
+                .stroke(Color.white.opacity(colorScheme.cardDiamondOpacity), lineWidth: 0.8)
                 .frame(width: 16, height: 16)
 
             // Four corner dots
@@ -79,7 +80,7 @@ struct CardView: View {
 
     private func cornerDot(x: CGFloat, y: CGFloat) -> some View {
         Circle()
-            .fill(Color.white.opacity(0.35))
+            .fill(Color.white.opacity(colorScheme.cornerDotOpacity))
             .frame(width: 2.5, height: 2.5)
             .position(x: x, y: y)
     }
@@ -88,8 +89,8 @@ struct CardView: View {
 
     private var cardFace: some View {
         ZStack {
-            // Cream white background
-            Color(red: 0.97, green: 0.97, blue: 0.95)
+            // Paper background from scheme
+            colorScheme.cardFaceBackground
 
             // Top-left pip
             VStack(alignment: .leading, spacing: 1) {
@@ -157,21 +158,14 @@ private struct CardDiamond: Shape {
     ZStack {
         Color.black.ignoresSafeArea()
         HStack(spacing: 20) {
-            CardView(
-                card: Card(rank: .ace, suit: .spades),
-                width: 100, height: 150,
-                isDragging: false, faceUp: false
-            )
-            CardView(
-                card: Card(rank: .queen, suit: .hearts),
-                width: 100, height: 150,
-                isDragging: false, faceUp: true
-            )
-            CardView(
-                card: Card(rank: .ten, suit: .diamonds),
-                width: 100, height: 150,
-                isDragging: true, faceUp: true
-            )
+            ForEach(CardColorScheme.allCases) { scheme in
+                CardView(
+                    card: Card(rank: .ace, suit: .spades),
+                    width: 80, height: 120,
+                    isDragging: false, faceUp: false,
+                    colorScheme: scheme
+                )
+            }
         }
     }
 }

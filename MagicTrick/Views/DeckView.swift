@@ -252,7 +252,8 @@ struct DeckView: View {
             height: cardHeight,
             isDragging: isPeeked,
             faceUp: isFaceUp,
-            isHovered: isHovered
+            isHovered: isHovered,
+            colorScheme: viewModel.colorScheme
         )
         .position(x: fx, y: fy)
         .rotationEffect(.degrees(fr), anchor: .center)

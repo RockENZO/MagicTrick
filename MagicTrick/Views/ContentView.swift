@@ -4,23 +4,27 @@ import SwiftUI
 struct ContentView: View {
     @StateObject private var viewModel = TrickViewModel()
     @ObservedObject private var motionManager = MotionManager.shared
-    @State private var lastLandscapeIsLeft: Bool = false  // true = left landscape, false = right landscape
+    @State private var lastLandscapeIsLeft: Bool = false
 
     var body: some View {
         GeometryReader { geometry in
             let isLandscape = geometry.size.width > geometry.size.height
 
             ZStack {
-                // Background gradient
-                backgroundGradient
+                // Background gradient from color scheme
+                LinearGradient(
+                    colors: viewModel.colorScheme.backgroundColors,
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
 
-                // DeckView always present — stacked deck visible underneath during return
+                // DeckView always present
                 DeckView(viewModel: viewModel, fanFromLeft: lastLandscapeIsLeft)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .zIndex(0)
 
-                // Reveal card — visible during both reveal and returning phases
-                // Single view instance so animation state (flip, appeared) persists
+                // Reveal card
                 if viewModel.phase == .reveal || viewModel.phase == .returning, let card = viewModel.revealCard {
                     RevealView(
                         card: card,
@@ -41,18 +45,35 @@ struct ContentView: View {
                         .position(x: geometry.size.width - 40, y: geometry.safeAreaInsets.top + 40)
                         .zIndex(9999)
                 }
+
+                // Color scheme switcher — triple-tap on deck during idle
+                if viewModel.phase == .idle {
+                    Color.clear
+                        .frame(width: 120, height: 120)
+                        .contentShape(Rectangle())
+                        .onTapGesture(count: 3) {
+                            viewModel.cycleColorScheme()
+                        }
+                        .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                        .zIndex(9999)
+                }
+
+                // Scheme name indicator — briefly shown on switch
+                if viewModel.phase == .idle {
+                    Text(viewModel.colorScheme.name)
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
+                        .foregroundColor(.white.opacity(0.4))
+                        .position(x: geometry.size.width / 2, y: geometry.size.height - 60)
+                        .allowsHitTesting(false)
+                }
             }
             .ignoresSafeArea()
-            // Handle rotation for phases where DeckView is not visible (.reveal)
             .onChange(of: isLandscape) { newValue in
                 if newValue {
-                    // Detect rotation direction from device orientation
                     let deviceOrientation = UIDevice.current.orientation
                     if deviceOrientation == .landscapeLeft {
-                        // Home button on right → fan from left to right
                         lastLandscapeIsLeft = false
                     } else if deviceOrientation == .landscapeRight {
-                        // Home button on left → fan from right to left
                         lastLandscapeIsLeft = true
                     }
                     viewModel.onRotateToLandscape()
@@ -76,21 +97,6 @@ struct ContentView: View {
             }
         }
         .statusBarHidden(true)
-    }
-
-    // MARK: - Background
-    private var backgroundGradient: some View {
-        LinearGradient(
-            colors: [
-                Color(red: 0.05, green: 0.08, blue: 0.15),
-                Color(red: 0.03, green: 0.05, blue: 0.10),
-                Color(red: 0.01, green: 0.02, blue: 0.05),
-                .black
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-        .ignoresSafeArea()
     }
 }
 
