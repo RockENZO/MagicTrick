@@ -5,6 +5,7 @@ import SwiftUI
 /// dragged out on swipe-up (peek).
 struct DeckView: View {
     @ObservedObject var viewModel: TrickViewModel
+    var fanFromLeft: Bool = true  // true = left-to-right, false = right-to-left
 
     private let cardWidth: CGFloat = 80
     private let cardHeight: CGFloat = 120
@@ -308,9 +309,11 @@ struct DeckView: View {
             let fanRotation = normalizedPos * 8
             let edgeScale = 1.0 - abs(normalizedPos) * 0.015
 
-            // Per-card stagger: each card's fan progress is delayed by its index
-            // Card 0 fans first, card 51 fans last
-            let staggerDelay = CGFloat(index) / CGFloat(max(total - 1, 1))
+            // Per-card stagger: direction depends on fanFromLeft
+            // Left-to-right: card 0 fans first, card 51 fans last
+            // Right-to-left: card 51 fans first, card 0 fans last
+            let normalizedIndex = CGFloat(index) / CGFloat(max(total - 1, 1))
+            let staggerDelay = fanFromLeft ? normalizedIndex : (1.0 - normalizedIndex)
             // Card's individual progress: 0 at its start time, 1 at its end time
             // The stagger window is 60% of total duration, rest is for the last cards to catch up
             let staggerWindow: CGFloat = 0.6
