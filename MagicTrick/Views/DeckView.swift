@@ -291,8 +291,9 @@ struct DeckView: View {
             return CardPosition(x: stackX, y: stackY, rotation: 0, scale: 1.0, zIndex: Double(index))
 
         case .spread, .reveal:
-            // Stacked position (same as idle)
-            let stackX = centerX + CGFloat(index) * 0.3 - CGFloat(total) * 0.15
+            // Starting edge position (where cards stack before fanning)
+            let edgeX: CGFloat = fanFromLeft ? (cardWidth / 2 + cardWidth * 0.6) : (screenW - cardWidth / 2 - cardWidth * 0.6)
+            let stackX = edgeX + CGFloat(index) * 0.3 - CGFloat(total) * 0.15
             let stackY = centerY + CGFloat(index) * 0.5 - CGFloat(total) * 0.25
 
             // Fanned position

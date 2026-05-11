@@ -206,7 +206,6 @@ final class TrickViewModel: ObservableObject {
     /// Finger moved — compute offset relative to where peek began
     func updatePeekOffset(currentLocation: CGPoint) {
         let now = Date()
-        let dt = max(now.timeIntervalSince(lastDragTime), 0.001)
 
         // Offset from the touch origin (where peek started), not from gesture start
         let relativeOffset = CGSize(
@@ -253,7 +252,7 @@ final class TrickViewModel: ObservableObject {
 
     /// Finger lifted — either cancel (didn't drag far enough) or commit
     func releasePeek(at index: Int) {
-        guard let cardID = peekedCardID else { return }
+        guard peekedCardID != nil else { return }
 
         if !hasFlipped {
             // Didn't drag far enough — spring back with momentum
