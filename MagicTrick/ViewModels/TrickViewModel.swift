@@ -15,7 +15,10 @@ final class TrickViewModel: ObservableObject {
     @Published var shuffleLateral: [CGFloat] = []
     @Published var isShuffling = false
 
-    // Peek state — card being dragged, follows finger (2D once flipped)
+    // Hover state — finger is over a card (browsing the fan)
+    @Published var hoveredCardID: UUID? = nil
+
+    // Peek state — card being dragged out, follows finger (2D once flipped)
     @Published var peekedCardID: UUID? = nil
     @Published var peekOffset: CGSize = .zero
 
@@ -29,6 +32,7 @@ final class TrickViewModel: ObservableObject {
     private var hasFlipped = false              // Whether peeked card has been flipped face-up
     private var lastDragTime: Date = Date()
     private var lastDragOffset: CGSize = .zero
+    private var touchStartY: CGFloat = 0        // Y position when finger first touched
 
     // Tracks whether spectator has picked a card this round
     private(set) var hasPickedCard = false
@@ -51,6 +55,7 @@ final class TrickViewModel: ObservableObject {
         isShuffling = false
         shuffleOffsets = []
         shuffleLateral = []
+        hoveredCardID = nil
         peekedCardID = nil
         peekOffset = .zero
         hasFlipped = false
@@ -69,6 +74,7 @@ final class TrickViewModel: ObservableObject {
     func onRotateToLandscape() {
         // Phase change is INSTANT — DeckView handles animation via screen-size interpolation
         // Clear any active peek
+        hoveredCardID = nil
         peekedCardID = nil
         peekOffset = .zero
         hasFlipped = false
@@ -108,6 +114,7 @@ final class TrickViewModel: ObservableObject {
         if let cardID = peekedCardID, let idx = deck.firstIndex(where: { $0.id == cardID }) {
             deck[idx].isFaceUp = false
         }
+        hoveredCardID = nil
         peekedCardID = nil
         peekOffset = .zero
         hasFlipped = false
@@ -133,9 +140,30 @@ final class TrickViewModel: ObservableObject {
         }
     }
 
-    // MARK: - Peek Flow (finger-following drag with physics)
+    // MARK: - Hover Flow (finger browsing across the fan)
 
-    /// Finger touched a card — start tracking, no flip yet
+    /// Finger touched the fan area — identify the card under the finger
+    func beginHover(id: UUID) {
+        guard phase == .spread else { return }
+        hoveredCardID = id
+        HapticManager.shared.cardLift()
+    }
+
+    /// Finger moved to a different card — switch hover target
+    func updateHover(to id: UUID) {
+        guard phase == .spread else { return }
+        guard id != hoveredCardID else { return }
+        hoveredCardID = id
+    }
+
+    /// Finger left all cards (or lifted) — clear hover
+    func endHover() {
+        hoveredCardID = nil
+    }
+
+    // MARK: - Peek Flow (swipe-up drag with physics)
+
+    /// Finger swiped upward past threshold on a hovered card — begin full drag-out
     func beginPeek(id: UUID) {
         guard phase == .spread else { return }
 
@@ -148,6 +176,7 @@ final class TrickViewModel: ObservableObject {
             deck[prevIdx].isFaceUp = false
         }
 
+        hoveredCardID = nil  // Hover transitions to peek
         withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
             peekedCardID = id
         }
@@ -318,6 +347,7 @@ final class TrickViewModel: ObservableObject {
         hasRevealed = false
         hasPickedCard = false
         magicTriggered = false   // Reset secret trigger — must double-tap again each round
+        hoveredCardID = nil
         peekedCardID = nil
         peekOffset = .zero
         hasFlipped = false
