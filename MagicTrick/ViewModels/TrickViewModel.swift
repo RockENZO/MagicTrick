@@ -145,7 +145,7 @@ final class TrickViewModel: ObservableObject {
     /// Finger touched the fan area — identify the card under the finger
     func beginHover(id: UUID) {
         guard phase == .spread else { return }
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.65)) {
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.55)) {
             hoveredCardID = id
         }
         HapticManager.shared.cardLift()
@@ -155,14 +155,14 @@ final class TrickViewModel: ObservableObject {
     func updateHover(to id: UUID) {
         guard phase == .spread else { return }
         guard id != hoveredCardID else { return }
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.65)) {
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.55)) {
             hoveredCardID = id
         }
     }
 
     /// Finger left all cards (or lifted) — clear hover with spring
     func endHover() {
-        withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) {
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
             hoveredCardID = nil
         }
     }
