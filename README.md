@@ -2,7 +2,7 @@
 
 An iOS card trick app where the magician performs a real card trick using only physical device interactions — no buttons, no UI chrome, no visible controls.
 
-![Demo](demo.gif)
+![Demo](demo.gif?v=2)
 
 ## How It Works
 
