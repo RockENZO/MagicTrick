@@ -5,6 +5,7 @@ import SwiftUI
 /// dragged out on swipe-up (peek).
 struct DeckView: View {
     @ObservedObject var viewModel: TrickViewModel
+    var fanFromLeft: Bool = true  // true = left-to-right, false = right-to-left
 
     private let cardWidth: CGFloat = 80
     private let cardHeight: CGFloat = 120
@@ -13,6 +14,9 @@ struct DeckView: View {
     @State private var animatedScreenSize: CGSize = .zero
     @State private var targetScreenSize: CGSize = .zero
     @State private var hasAppeared = false
+
+    // Staggered fan-out animation — cards fan one by one from left to right
+    @State private var fanProgress: CGFloat = 0  // 0 = stacked, 1 = fully fanned
 
     // Gesture state
     @State private var touchStartY: CGFloat = 0
@@ -123,8 +127,13 @@ struct DeckView: View {
                     }
                     if newSize.width > newSize.height {
                         viewModel.onRotateToLandscape()
+                        // Staggered fan-out animation
+                        withAnimation(.easeOut(duration: 0.8)) {
+                            fanProgress = 1
+                        }
                     } else {
                         hoverEntryCardID = nil
+                        fanProgress = 0  // Reset instantly for next fan-out
                         viewModel.onRotateToPortrait()
                     }
                 } else {
@@ -282,22 +291,56 @@ struct DeckView: View {
             return CardPosition(x: stackX, y: stackY, rotation: 0, scale: 1.0, zIndex: Double(index))
 
         case .spread, .reveal:
+            // Starting edge position (where cards stack before fanning)
+            let edgeX: CGFloat = fanFromLeft ? (cardWidth / 2 + cardWidth * 0.6) : (screenW - cardWidth / 2 - cardWidth * 0.6)
+            let stackX = edgeX + CGFloat(index) * 0.3 - CGFloat(total) * 0.15
+            let stackY = centerY + CGFloat(index) * 0.5 - CGFloat(total) * 0.25
+
+            // Fanned position
             let margin: CGFloat = cardWidth * 0.6
             let usableWidth = screenW - cardWidth - margin * 2
             let spacing = total > 1 ? usableWidth / CGFloat(total - 1) : 0
-            let x = margin + (cardWidth / 2) + CGFloat(index) * spacing
+            let fanX = margin + (cardWidth / 2) + CGFloat(index) * spacing
 
             let normalizedPos = total > 1
                 ? (CGFloat(index) / CGFloat(total - 1)) * 2 - 1
                 : 0
             let arcCurve = normalizedPos * normalizedPos
-            let yOffset = arcCurve * 25
-            let rotation = normalizedPos * 8
+            let fanYOffset = arcCurve * 25
+            let fanRotation = normalizedPos * 8
             let edgeScale = 1.0 - abs(normalizedPos) * 0.015
 
+            // Per-card stagger: direction depends on fanFromLeft
+            // Left-to-right: card 0 fans first, card 51 fans last
+            // Right-to-left: card 51 fans first, card 0 fans last
+            let normalizedIndex = CGFloat(index) / CGFloat(max(total - 1, 1))
+            let staggerDelay = fanFromLeft ? normalizedIndex : (1.0 - normalizedIndex)
+            // Card's individual progress: 0 at its start time, 1 at its end time
+            // The stagger window is 60% of total duration, rest is for the last cards to catch up
+            let staggerWindow: CGFloat = 0.6
+            let cardProgress: CGFloat
+            if fanProgress <= 0 {
+                cardProgress = 0
+            } else if fanProgress >= 1 {
+                cardProgress = 1
+            } else {
+                let cardStart = staggerDelay * staggerWindow
+                let cardDuration = 1.0 - staggerWindow + staggerWindow * (1.0 - staggerDelay)
+                cardProgress = min(max((fanProgress - cardStart) / cardDuration, 0), 1)
+            }
+
+            // Ease-out curve for natural deceleration
+            let eased = 1.0 - pow(1.0 - cardProgress, 2.5)
+
+            // Interpolate between stacked and fanned
+            let finalX = stackX + (fanX - stackX) * eased
+            let finalY = stackY + (centerY + fanYOffset - stackY) * eased
+            let finalRotation = fanRotation * eased
+            let finalScale = 1.0 + (edgeScale - 1.0) * eased
+
             return CardPosition(
-                x: x, y: centerY + yOffset,
-                rotation: rotation, scale: edgeScale,
+                x: finalX, y: finalY,
+                rotation: finalRotation, scale: finalScale,
                 zIndex: Double(index)
             )
         }

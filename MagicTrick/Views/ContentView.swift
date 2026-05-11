@@ -4,6 +4,7 @@ import SwiftUI
 struct ContentView: View {
     @StateObject private var viewModel = TrickViewModel()
     @ObservedObject private var motionManager = MotionManager.shared
+    @State private var lastLandscapeIsLeft: Bool = false  // true = left landscape, false = right landscape
 
     var body: some View {
         GeometryReader { geometry in
@@ -14,7 +15,7 @@ struct ContentView: View {
                 backgroundGradient
 
                 // DeckView always present — stacked deck visible underneath during return
-                DeckView(viewModel: viewModel)
+                DeckView(viewModel: viewModel, fanFromLeft: lastLandscapeIsLeft)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .zIndex(0)
 
@@ -45,6 +46,15 @@ struct ContentView: View {
             // Handle rotation for phases where DeckView is not visible (.reveal)
             .onChange(of: isLandscape) { newValue in
                 if newValue {
+                    // Detect rotation direction from device orientation
+                    let deviceOrientation = UIDevice.current.orientation
+                    if deviceOrientation == .landscapeLeft {
+                        // Home button on right → fan from left to right
+                        lastLandscapeIsLeft = false
+                    } else if deviceOrientation == .landscapeRight {
+                        // Home button on left → fan from right to left
+                        lastLandscapeIsLeft = true
+                    }
                     viewModel.onRotateToLandscape()
                 } else {
                     viewModel.onRotateToPortrait()
@@ -59,6 +69,7 @@ struct ContentView: View {
             }
             .onAppear {
                 MotionManager.shared.startMonitoring()
+                UIDevice.current.beginGeneratingDeviceOrientationNotifications()
             }
             .onDisappear {
                 MotionManager.shared.stopMonitoring()
