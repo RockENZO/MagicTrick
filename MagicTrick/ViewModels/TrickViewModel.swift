@@ -224,7 +224,7 @@ final class TrickViewModel: ObservableObject {
         }
 
         // Flip card face-up once dragged past threshold
-        if peekOffset.height < -50 && !hasFlipped {
+        if peekOffset.height < -35 && !hasFlipped {
             hasFlipped = true
             if let id = peekedCardID, let idx = deck.firstIndex(where: { $0.id == id }) {
                 // ★ MAGIC: transform dragged card into audience's card

@@ -72,7 +72,7 @@ struct DeckView: View {
                                 // - Must be mostly vertical (not a horizontal swipe)
                                 let upwardDelta = touchStartY - location.y
                                 let horizontalDelta = abs(location.x - touchStartX)
-                                let isDeliberateSwipeUp = upwardDelta > 40 && upwardDelta > horizontalDelta * 1.5
+                                let isDeliberateSwipeUp = upwardDelta > 25 && upwardDelta > horizontalDelta * 1.2
 
                                 if isDeliberateSwipeUp {
                                     viewModel.beginPeek(id: cardID, touchLocation: location)
