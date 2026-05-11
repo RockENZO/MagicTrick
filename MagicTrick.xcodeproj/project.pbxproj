@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		A10000000000000000000001 /* MagicTrickApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000001 /* MagicTrickApp.swift */; };
 		A10000000000000000000002 /* Card.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000002 /* Card.swift */; };
+		AABB001122334455667788DD /* CardColorScheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = AABB001122334455667788CC /* CardColorScheme.swift */; };
 		A10000000000000000000003 /* Deck.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000003 /* Deck.swift */; };
 		A10000000000000000000004 /* TrickPhase.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000004 /* TrickPhase.swift */; };
 		A10000000000000000000005 /* TrickViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000005 /* TrickViewModel.swift */; };
@@ -24,6 +25,7 @@
 /* Begin PBXFileReference section */
 		A20000000000000000000001 /* MagicTrickApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MagicTrickApp.swift; sourceTree = "<group>"; };
 		A20000000000000000000002 /* Card.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Card.swift; sourceTree = "<group>"; };
+		AABB001122334455667788CC /* CardColorScheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CardColorScheme.swift; sourceTree = "<group>"; };
 		A20000000000000000000003 /* Deck.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Deck.swift; sourceTree = "<group>"; };
 		A20000000000000000000004 /* TrickPhase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrickPhase.swift; sourceTree = "<group>"; };
 		A20000000000000000000005 /* TrickViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrickViewModel.swift; sourceTree = "<group>"; };
@@ -73,6 +75,7 @@
 			isa = PBXGroup;
 			children = (
 				A20000000000000000000002 /* Card.swift */,
+				AABB001122334455667788CC /* CardColorScheme.swift */,
 				A20000000000000000000003 /* Deck.swift */,
 				A20000000000000000000004 /* TrickPhase.swift */,
 			);
@@ -193,6 +196,7 @@
 			files = (
 				A10000000000000000000001 /* MagicTrickApp.swift in Sources */,
 				A10000000000000000000002 /* Card.swift in Sources */,
+				AABB001122334455667788DD /* CardColorScheme.swift in Sources */,
 				A10000000000000000000003 /* Deck.swift in Sources */,
 				A10000000000000000000004 /* TrickPhase.swift in Sources */,
 				A10000000000000000000005 /* TrickViewModel.swift in Sources */,
