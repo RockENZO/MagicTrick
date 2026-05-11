@@ -50,9 +50,9 @@ struct DeckView: View {
                         ? Double(index % 5 - 2) * 2.5 : 0
 
                     // Hover: subtle tilt + lift (subdued version of peek)
-                    let hoverOffset: CGFloat = isHovered ? -6 : 0
-                    let hoverRotation: Double = isHovered ? 2.5 : 0
-                    let hoverScale: CGFloat = isHovered ? 1.03 : 1.0
+                    let hoverOffset: CGFloat = isHovered ? -8 : 0
+                    let hoverRotation: Double = isHovered ? 3.5 : 0
+                    let hoverScale: CGFloat = isHovered ? 1.04 : 1.0
 
                     CardView(
                         card: card,
@@ -110,7 +110,7 @@ struct DeckView: View {
                                 let upwardDelta = touchStartY - location.y
                                 if upwardDelta > 40 {
                                     // Transition from hover → peek
-                                    viewModel.beginPeek(id: cardID)
+                                    viewModel.beginPeek(id: cardID, touchLocation: location)
                                 }
                             } else {
                                 // Finger is between cards or outside fan — clear hover
@@ -118,7 +118,7 @@ struct DeckView: View {
                             }
                         } else {
                             // --- PEEK MODE: card is being dragged out ---
-                            viewModel.updatePeekOffset(to: value.translation)
+                            viewModel.updatePeekOffset(currentLocation: location)
                         }
                     }
                     .onEnded { _ in
