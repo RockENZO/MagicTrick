@@ -9,6 +9,7 @@ struct CardView: View {
     let height: CGFloat
     let isDragging: Bool
     let faceUp: Bool
+    var isHovered: Bool = false
 
     private var cornerRadius: CGFloat { width * 0.08 }
 
@@ -28,12 +29,12 @@ struct CardView: View {
             RoundedRectangle(cornerRadius: cornerRadius)
                 .stroke(Color.white.opacity(faceUp ? 0.05 : 0.12), lineWidth: 0.5)
         )
-        // Shadow — lightweight for deck cards, elevated only when dragging
+        // Shadow — resting < hovered < dragging
         .shadow(
-            color: .black.opacity(isDragging ? 0.55 : 0.3),
-            radius: isDragging ? 12 : 4,
+            color: .black.opacity(isDragging ? 0.55 : (isHovered ? 0.4 : 0.3)),
+            radius: isDragging ? 12 : (isHovered ? 7 : 4),
             x: 0,
-            y: isDragging ? 8 : 2
+            y: isDragging ? 8 : (isHovered ? 4 : 2)
         )
     }
 

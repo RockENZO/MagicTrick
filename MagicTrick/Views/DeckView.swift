@@ -1,10 +1,8 @@
 import SwiftUI
 
-/// Unified card layout — same card views animate between phases:
-/// - idle: stacked (portrait)
-/// - spread: fanned across screen width (landscape), per-card drag-up with finger tracking
-/// - reveal: same as spread (so we can animate the tapped card)
-/// - shuffling: riffle animation on the centered stack
+/// Unified card layout — single parent gesture with hit-testing for natural
+/// finger-browse across the fan. Cards tilt + lift on hover, then get
+/// dragged out on swipe-up (peek).
 struct DeckView: View {
     @ObservedObject var viewModel: TrickViewModel
 
@@ -16,9 +14,13 @@ struct DeckView: View {
     @State private var targetScreenSize: CGSize = .zero
     @State private var hasAppeared = false
 
+    // Gesture state
+    @State private var touchStartY: CGFloat = 0
+    @State private var touchStartX: CGFloat = 0
+    @State private var hoverEntryCardID: UUID? = nil  // Card that was hovered when touchStartY was set
+
     var body: some View {
         GeometryReader { geometry in
-            // Use animated screen size for smooth rotation interpolation
             let screenW = animatedScreenSize.width > 0 ? animatedScreenSize.width : geometry.size.width
             let screenH = animatedScreenSize.height > 0 ? animatedScreenSize.height : geometry.size.height
             let centerX = screenW / 2
@@ -36,64 +38,122 @@ struct DeckView: View {
                     )
 
                     let isPeeked = viewModel.peekedCardID == card.id
+                    let isHovered = viewModel.hoveredCardID == card.id
                     let isFaceUp = card.isFaceUp
 
-                    // Shuffle offsets for this card (0 when not shuffling)
+                    // Shuffle offsets (0 when not shuffling)
                     let shuffleY: CGFloat = (index < viewModel.shuffleOffsets.count)
-                        ? viewModel.shuffleOffsets[index]
-                        : 0
+                        ? viewModel.shuffleOffsets[index] : 0
                     let shuffleX: CGFloat = (index < viewModel.shuffleLateral.count)
-                        ? viewModel.shuffleLateral[index]
+                        ? viewModel.shuffleLateral[index] : 0
+
+                    // Shuffle flutter
+                    let shuffleRotation: Double = shuffleY != 0
+                        ? Double(index % 5 - 2) * 2.5 : 0
+
+                    // Normalized position: -1 (left edge) to +1 (right edge)
+                    let normalizedPos = viewModel.deck.count > 1
+                        ? (CGFloat(index) / CGFloat(viewModel.deck.count - 1)) * 2 - 1
                         : 0
 
-                    // Shuffle rotation — cards flutter while airborne
-                    let shuffleRotation: Double = shuffleY != 0
-                        ? Double(index % 5 - 2) * 2.5
-                        : 0
+                    // Hover: tilt toward center + uniform lift + scale
+                    // Rotation direction: left cards rotate clockwise (+), right cards rotate counter-clockwise (-)
+                    let hoverTowardCenter: Double = -normalizedPos * 4.0
+                    let hoverOffset: CGFloat = isHovered ? -8 : 0
+                    let hoverRotation: Double = isHovered ? hoverTowardCenter : 0
+                    let hoverScale: CGFloat = isHovered ? 1.04 : 1.0
 
                     CardView(
                         card: card,
                         width: cardWidth,
                         height: cardHeight,
                         isDragging: isPeeked,
-                        faceUp: isFaceUp
+                        faceUp: isFaceUp,
+                        isHovered: isHovered
                     )
                     .position(
                         x: layout.x + shuffleX + (isPeeked ? viewModel.peekOffset.width : 0),
-                        y: layout.y + (isPeeked ? viewModel.peekOffset.height : 0) + shuffleY
+                        y: layout.y + shuffleY + (isPeeked ? viewModel.peekOffset.height : 0) + hoverOffset
                     )
-                    .rotationEffect(.degrees(layout.rotation + shuffleRotation + (isPeeked ? peekRotation : 0)), anchor: .center)
-                    .scaleEffect(isPeeked ? 1.08 : layout.scale)
-                    .zIndex(isPeeked ? 1000 : layout.zIndex)
-                    .gesture(
-                        DragGesture(minimumDistance: 0)
-                            .onChanged { value in
-                                guard viewModel.phase == .spread else { return }
-
-                                // Start tracking this card on first touch
-                                if viewModel.peekedCardID == nil {
-                                    viewModel.beginPeek(id: card.id)
-                                }
-
-                                // Update drag offset — before flip: Y only, after: full 2D
-                                if viewModel.peekedCardID == card.id {
-                                    viewModel.updatePeekOffset(to: value.translation)
-                                }
-                            }
-                            .onEnded { _ in
-                                guard viewModel.phase == .spread else { return }
-                                if viewModel.peekedCardID == card.id {
-                                    viewModel.releasePeek(at: index)
-                                }
-                            }
+                    .rotationEffect(
+                        .degrees(layout.rotation + shuffleRotation + hoverRotation + (isPeeked ? peekRotation : 0)),
+                        anchor: .center
                     )
-                    .allowsHitTesting(
-                        viewModel.phase == .spread
-                            ? (isPeeked || viewModel.peekedCardID == nil)
-                            : false
-                    )
+                    .scaleEffect(isPeeked ? 1.08 : (isHovered ? hoverScale : layout.scale))
+                    .zIndex(isPeeked ? 1000 : (isHovered ? 999 : layout.zIndex))
+                    .allowsHitTesting(false)  // Parent gesture handles all input
                 }
             }
+            .frame(width: screenW, height: screenH)  // Explicit frame for gesture area
+            .contentShape(Rectangle())  // Ensure gesture area matches frame
+            // Single parent gesture — handles both hover browsing and peek dragging
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        guard viewModel.phase == .spread else { return }
+                        let location = value.location
+
+                        if viewModel.peekedCardID == nil {
+                            // --- HOVER MODE: finger is browsing the fan ---
+
+                            // Hit-test: which card is under the finger?
+                            if let cardIndex = hitTestCard(
+                                x: location.x,
+                                screenW: screenW,
+                                centerX: centerX,
+                                total: viewModel.deck.count
+                            ) {
+                                let cardID = viewModel.deck[cardIndex].id
+
+                                if viewModel.hoveredCardID != cardID {
+                                    // Finger moved to a new card — reset swipe tracking for this card
+                                    viewModel.updateHover(to: cardID)
+                                    touchStartY = location.y
+                                    touchStartX = location.x
+                                    hoverEntryCardID = cardID
+                                }
+
+                                // Record start on first touch
+                                if hoverEntryCardID == nil {
+                                    touchStartY = location.y
+                                    touchStartX = location.x
+                                    hoverEntryCardID = cardID
+                                }
+
+                                // Check for deliberate swipe-up on THIS card:
+                                // - Upward delta from where finger entered this card
+                                // - Must be mostly vertical (not a horizontal swipe)
+                                let upwardDelta = touchStartY - location.y
+                                let horizontalDelta = abs(location.x - touchStartX)
+                                let isDeliberateSwipeUp = upwardDelta > 40 && upwardDelta > horizontalDelta * 1.5
+
+                                if isDeliberateSwipeUp {
+                                    viewModel.beginPeek(id: cardID, touchLocation: location)
+                                }
+                            } else {
+                                // Finger is between cards or outside fan — clear hover
+                                viewModel.endHover()
+                            }
+                        } else {
+                            // --- PEEK MODE: card is being dragged out ---
+                            viewModel.updatePeekOffset(currentLocation: location)
+                        }
+                    }
+                    .onEnded { _ in
+                        guard viewModel.phase == .spread else { return }
+
+                        if viewModel.peekedCardID != nil {
+                            // Release peeked card
+                            if let idx = viewModel.deck.firstIndex(where: { $0.id == viewModel.peekedCardID }) {
+                                viewModel.releasePeek(at: idx)
+                            }
+                        } else {
+                            // Clear hover on finger lift
+                            viewModel.endHover()
+                        }
+                        hoverEntryCardID = nil
+                    }
+            )
             // Detect geometry changes for smooth rotation interpolation
             .onAppear {
                 guard !hasAppeared else { return }
@@ -110,21 +170,17 @@ struct DeckView: View {
                 let distance = sqrt(dx * dx + dy * dy)
 
                 if distance > 1 {
-                    // Meaningful size change (rotation) — spring-animate the screen size
                     targetScreenSize = newSize
-
                     withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) {
                         animatedScreenSize = newSize
                     }
-
-                    // Trigger instant phase change
                     if newSize.width > newSize.height {
                         viewModel.onRotateToLandscape()
                     } else {
+                        hoverEntryCardID = nil
                         viewModel.onRotateToPortrait()
                     }
                 } else {
-                    // Negligible change (safe area inset, etc.) — snap
                     targetScreenSize = newSize
                     animatedScreenSize = newSize
                 }
@@ -132,15 +188,32 @@ struct DeckView: View {
         }
     }
 
-    // MARK: - Peek Rotation (physics-based tilt from drag)
+    // MARK: - Hit Testing
 
-    /// Card rotates slightly based on drag offset — feels like lifting a real card
-    private var peekRotation: Double {
-        let dx = viewModel.peekOffset.width
-        return Double(dx) * 0.05
+    /// Maps a touch X position to the card index in the fanned layout.
+    /// Returns nil if the touch is outside the fan area.
+    private func hitTestCard(x: CGFloat, screenW: CGFloat, centerX: CGFloat, total: Int) -> Int? {
+        let margin: CGFloat = cardWidth * 0.6
+        let fanLeft = margin
+        let fanRight = screenW - margin
+
+        guard x >= fanLeft - cardWidth * 0.3 && x <= fanRight + cardWidth * 0.3 else {
+            return nil
+        }
+
+        // Map X position linearly to card index
+        let normalizedX = (x - fanLeft) / max(fanRight - fanLeft, 1)
+        let index = Int(round(normalizedX * CGFloat(total - 1)))
+        return index.clamped(to: 0...(total - 1))
     }
 
-    // MARK: - Card Layout (absolute screen positions)
+    // MARK: - Peek Rotation
+
+    private var peekRotation: Double {
+        return Double(viewModel.peekOffset.width) * 0.05
+    }
+
+    // MARK: - Card Layout
 
     private struct CardPosition {
         let x: CGFloat
@@ -160,50 +233,43 @@ struct DeckView: View {
     ) -> CardPosition {
         switch viewModel.phase {
         case .idle, .returning:
-            // Stacked deck — dead center, slight offset per card for depth feel
             let stackX = centerX + CGFloat(index) * 0.3 - CGFloat(total) * 0.15
             let stackY = centerY + CGFloat(index) * 0.5 - CGFloat(total) * 0.25
             return CardPosition(x: stackX, y: stackY, rotation: 0, scale: 1.0, zIndex: Double(index))
 
         case .shuffling:
-            // Wider stack during shuffle — cards spread across screen for dramatic lift
             let stackX = centerX + CGFloat(index) * 2.0 - CGFloat(total) * 1.0
             let stackY = centerY + CGFloat(index) * 2.5 - CGFloat(total) * 1.25
             return CardPosition(x: stackX, y: stackY, rotation: 0, scale: 1.0, zIndex: Double(index))
 
         case .spread, .reveal:
-            // Fan spread — inset from edges to avoid Dynamic Island / safe area
             let margin: CGFloat = cardWidth * 0.6
             let usableWidth = screenW - cardWidth - margin * 2
-            let spacing: CGFloat
-            if total > 1 {
-                spacing = usableWidth / CGFloat(total - 1)
-            } else {
-                spacing = 0
-            }
+            let spacing = total > 1 ? usableWidth / CGFloat(total - 1) : 0
             let x = margin + (cardWidth / 2) + CGFloat(index) * spacing
 
-            // Natural fan arc — cards in the middle are higher, edges droop
             let normalizedPos = total > 1
-                ? (CGFloat(index) / CGFloat(total - 1)) * 2 - 1  // -1 to 1
+                ? (CGFloat(index) / CGFloat(total - 1)) * 2 - 1
                 : 0
-            let arcCurve = normalizedPos * normalizedPos  // Parabolic arc
-            let yOffset = arcCurve * 25  // Edges curve down 25pt
-
-            // Fan rotation — each card angles slightly, like a real hand of cards
-            let rotation = normalizedPos * 8  // max ±8 degrees
-
-            // Perspective depth — edge cards very slightly smaller (subtle foreshortening)
+            let arcCurve = normalizedPos * normalizedPos
+            let yOffset = arcCurve * 25
+            let rotation = normalizedPos * 8
             let edgeScale = 1.0 - abs(normalizedPos) * 0.015
 
             return CardPosition(
-                x: x,
-                y: centerY + yOffset,
-                rotation: rotation,
-                scale: edgeScale,
+                x: x, y: centerY + yOffset,
+                rotation: rotation, scale: edgeScale,
                 zIndex: Double(index)
             )
         }
+    }
+}
+
+// MARK: - Comparable Clamped Helper
+
+private extension Comparable {
+    func clamped(to range: ClosedRange<Self>) -> Self {
+        min(max(self, range.lowerBound), range.upperBound)
     }
 }
 
