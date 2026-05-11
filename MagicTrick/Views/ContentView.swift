@@ -9,10 +9,24 @@ struct ContentView: View {
     var body: some View {
         GeometryReader { geometry in
             let isLandscape = geometry.size.width > geometry.size.height
+            // Diagonal — always larger than both width and height, covers screen during rotation
+            let diagonal = sqrt(geometry.size.width * geometry.size.width + geometry.size.height * geometry.size.height)
 
             ZStack {
-                // Background gradient
-                backgroundGradient
+                // Background gradient — oversized to cover screen during rotation transitions
+                // No black corners because the gradient always extends beyond the screen
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.05, green: 0.08, blue: 0.15),
+                        Color(red: 0.03, green: 0.05, blue: 0.10),
+                        Color(red: 0.01, green: 0.02, blue: 0.05),
+                        .black
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(width: diagonal, height: diagonal)
+                .ignoresSafeArea()
 
                 // DeckView always present — stacked deck visible underneath during return
                 DeckView(viewModel: viewModel, fanFromLeft: lastLandscapeIsLeft)
@@ -78,20 +92,6 @@ struct ContentView: View {
         .statusBarHidden(true)
     }
 
-    // MARK: - Background
-    private var backgroundGradient: some View {
-        LinearGradient(
-            colors: [
-                Color(red: 0.05, green: 0.08, blue: 0.15),
-                Color(red: 0.03, green: 0.05, blue: 0.10),
-                Color(red: 0.01, green: 0.02, blue: 0.05),
-                .black
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-        .ignoresSafeArea()
-    }
 }
 
 #Preview {
