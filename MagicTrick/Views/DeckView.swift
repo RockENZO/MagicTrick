@@ -27,61 +27,8 @@ struct DeckView: View {
             let centerY = screenH / 2
 
             ZStack {
-                ForEach(Array(viewModel.deck.enumerated()), id: \.element.id) { index, card in
-                    let layout = cardLayout(
-                        index: index,
-                        total: viewModel.deck.count,
-                        screenW: screenW,
-                        screenH: screenH,
-                        centerX: centerX,
-                        centerY: centerY
-                    )
-
-                    let isPeeked = viewModel.peekedCardID == card.id
-                    let isHovered = viewModel.hoveredCardID == card.id
-                    let isFaceUp = card.isFaceUp
-
-                    // Shuffle offsets (0 when not shuffling)
-                    let shuffleY: CGFloat = (index < viewModel.shuffleOffsets.count)
-                        ? viewModel.shuffleOffsets[index] : 0
-                    let shuffleX: CGFloat = (index < viewModel.shuffleLateral.count)
-                        ? viewModel.shuffleLateral[index] : 0
-
-                    // Shuffle flutter
-                    let shuffleRotation: Double = shuffleY != 0
-                        ? Double(index % 5 - 2) * 2.5 : 0
-
-                    // Normalized position: -1 (left edge) to +1 (right edge)
-                    let normalizedPos = viewModel.deck.count > 1
-                        ? (CGFloat(index) / CGFloat(viewModel.deck.count - 1)) * 2 - 1
-                        : 0
-
-                    // Hover: tilt toward center + uniform lift + scale
-                    // Rotation direction: left cards rotate clockwise (+), right cards rotate counter-clockwise (-)
-                    let hoverTowardCenter: Double = -normalizedPos * 4.0
-                    let hoverOffset: CGFloat = isHovered ? -8 : 0
-                    let hoverRotation: Double = isHovered ? hoverTowardCenter : 0
-                    let hoverScale: CGFloat = isHovered ? 1.04 : 1.0
-
-                    CardView(
-                        card: card,
-                        width: cardWidth,
-                        height: cardHeight,
-                        isDragging: isPeeked,
-                        faceUp: isFaceUp,
-                        isHovered: isHovered
-                    )
-                    .position(
-                        x: layout.x + shuffleX + (isPeeked ? viewModel.peekOffset.width : 0),
-                        y: layout.y + shuffleY + (isPeeked ? viewModel.peekOffset.height : 0) + hoverOffset
-                    )
-                    .rotationEffect(
-                        .degrees(layout.rotation + shuffleRotation + hoverRotation + (isPeeked ? peekRotation : 0)),
-                        anchor: .center
-                    )
-                    .scaleEffect(isPeeked ? 1.08 : (isHovered ? hoverScale : layout.scale))
-                    .zIndex(isPeeked ? 1000 : (isHovered ? 999 : layout.zIndex))
-                    .allowsHitTesting(false)  // Parent gesture handles all input
+                ForEach(0..<viewModel.deck.count, id: \.self) { index in
+                    cardView(at: index, screenW: screenW, screenH: screenH, centerX: centerX, centerY: centerY)
                 }
             }
             .frame(width: screenW, height: screenH)  // Explicit frame for gesture area
@@ -125,7 +72,7 @@ struct DeckView: View {
                                 // - Must be mostly vertical (not a horizontal swipe)
                                 let upwardDelta = touchStartY - location.y
                                 let horizontalDelta = abs(location.x - touchStartX)
-                                let isDeliberateSwipeUp = upwardDelta > 40 && upwardDelta > horizontalDelta * 1.5
+                                let isDeliberateSwipeUp = upwardDelta > 25 && upwardDelta > horizontalDelta * 1.2
 
                                 if isDeliberateSwipeUp {
                                     viewModel.beginPeek(id: cardID, touchLocation: location)
@@ -211,6 +158,98 @@ struct DeckView: View {
 
     private var peekRotation: Double {
         return Double(viewModel.peekOffset.width) * 0.05
+    }
+
+    // MARK: - Card View Builder
+
+    private struct HoverValues {
+        var offset: CGFloat = 0
+        var rotation: Double = 0
+        var scale: CGFloat = 1.0
+        var shiftX: CGFloat = 0
+    }
+
+    private func hoverValues(for index: Int, isHovered: Bool) -> HoverValues {
+        let deckCount: Int = viewModel.deck.count
+        let normPos: CGFloat = deckCount > 1
+            ? (CGFloat(index) / CGFloat(deckCount - 1)) * 2 - 1
+            : 0
+
+        let hoveredIdx: Int? = viewModel.hoveredCardID.flatMap { hid in
+            viewModel.deck.firstIndex(where: { $0.id == hid })
+        }
+        let dist: Int = hoveredIdx.map { abs(index - $0) } ?? 99
+
+        var result = HoverValues()
+
+        if isHovered {
+            result.offset = -14
+            result.rotation = Double(-normPos) * 5.0
+            result.scale = 1.07
+        } else if dist == 1, let hIdx = hoveredIdx {
+            let dir: CGFloat = index > hIdx ? 1.0 : -1.0
+            result.offset = 2
+            result.rotation = Double(dir) * 2.0
+            result.scale = 0.98
+            result.shiftX = dir * 6
+        } else if dist == 2, let hIdx = hoveredIdx {
+            let dir: CGFloat = index > hIdx ? 1.0 : -1.0
+            result.offset = 1
+            result.rotation = Double(dir) * 0.8
+            result.scale = 0.99
+            result.shiftX = dir * 2.5
+        }
+
+        return result
+    }
+
+    @ViewBuilder
+    private func cardView(at index: Int, screenW: CGFloat, screenH: CGFloat, centerX: CGFloat, centerY: CGFloat) -> some View {
+        let card = viewModel.deck[index]
+        let layout = cardLayout(
+            index: index,
+            total: viewModel.deck.count,
+            screenW: screenW,
+            screenH: screenH,
+            centerX: centerX,
+            centerY: centerY
+        )
+
+        let isPeeked = viewModel.peekedCardID == card.id
+        let isHovered = viewModel.hoveredCardID == card.id
+        let isFaceUp = card.isFaceUp
+
+        let shuffleY: CGFloat = (index < viewModel.shuffleOffsets.count)
+            ? viewModel.shuffleOffsets[index] : 0
+        let shuffleX: CGFloat = (index < viewModel.shuffleLateral.count)
+            ? viewModel.shuffleLateral[index] : 0
+
+        let flutterBase: Int = index % 5 - 2
+        let shuffleRot: Double = shuffleY != 0 ? Double(flutterBase) * 2.5 : 0
+
+        let hv = hoverValues(for: index, isHovered: isHovered)
+
+        let peekDX: CGFloat = isPeeked ? viewModel.peekOffset.width : 0
+        let peekDY: CGFloat = isPeeked ? viewModel.peekOffset.height : 0
+        let fx: CGFloat = layout.x + shuffleX + hv.shiftX + peekDX
+        let fy: CGFloat = layout.y + shuffleY + hv.offset + peekDY
+        let fr: Double = layout.rotation + shuffleRot + hv.rotation + (isPeeked ? peekRotation : 0)
+        let fs: CGFloat = isPeeked ? 1.08 : (isHovered ? hv.scale : layout.scale)
+        let fz: Double = isPeeked ? 1000 : (isHovered ? 999 : layout.zIndex)
+
+        CardView(
+            card: card,
+            width: cardWidth,
+            height: cardHeight,
+            isDragging: isPeeked,
+            faceUp: isFaceUp,
+            isHovered: isHovered
+        )
+        .position(x: fx, y: fy)
+        .rotationEffect(.degrees(fr), anchor: .center)
+        .scaleEffect(fs)
+        .zIndex(fz)
+        .allowsHitTesting(false)
     }
 
     // MARK: - Card Layout
