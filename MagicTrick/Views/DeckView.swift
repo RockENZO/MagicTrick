@@ -51,9 +51,16 @@ struct DeckView: View {
                     let shuffleRotation: Double = shuffleY != 0
                         ? Double(index % 5 - 2) * 2.5 : 0
 
-                    // Hover: subtle tilt + lift (subdued version of peek)
+                    // Normalized position: -1 (left edge) to +1 (right edge)
+                    let normalizedPos = viewModel.deck.count > 1
+                        ? (CGFloat(index) / CGFloat(viewModel.deck.count - 1)) * 2 - 1
+                        : 0
+
+                    // Hover: tilt toward center + uniform lift + scale
+                    // Rotation direction: left cards rotate clockwise (+), right cards rotate counter-clockwise (-)
+                    let hoverTowardCenter: Double = -normalizedPos * 4.0
                     let hoverOffset: CGFloat = isHovered ? -8 : 0
-                    let hoverRotation: Double = isHovered ? 3.5 : 0
+                    let hoverRotation: Double = isHovered ? hoverTowardCenter : 0
                     let hoverScale: CGFloat = isHovered ? 1.04 : 1.0
 
                     CardView(
