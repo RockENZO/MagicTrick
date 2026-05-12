@@ -33,6 +33,7 @@ final class TrickViewModel: ObservableObject {
     private var lastDragTime: Date = Date()
     private var lastDragOffset: CGSize = .zero
     private var touchStartY: CGFloat = 0        // Y position when finger first touched
+    private var peekMinY: CGFloat = 0           // Most negative Y reached during peek (peak drag distance)
 
     // Tracks whether spectator has picked a card this round
     private(set) var hasPickedCard = false
@@ -59,6 +60,7 @@ final class TrickViewModel: ObservableObject {
         peekedCardID = nil
         peekOffset = .zero
         hasFlipped = false
+        peekMinY = 0
         magicTriggered = false
         hasPickedCard = false
         hasRevealed = false
@@ -78,6 +80,7 @@ final class TrickViewModel: ObservableObject {
         peekedCardID = nil
         peekOffset = .zero
         hasFlipped = false
+        peekMinY = 0
 
         switch phase {
         case .idle:
@@ -118,6 +121,7 @@ final class TrickViewModel: ObservableObject {
         peekedCardID = nil
         peekOffset = .zero
         hasFlipped = false
+        peekMinY = 0
 
         switch phase {
         case .reveal:
@@ -193,6 +197,7 @@ final class TrickViewModel: ObservableObject {
         }
         peekOffset = .zero
         hasFlipped = false
+        peekMinY = 0
         lastDragTime = Date()
         lastDragOffset = .zero
         HapticManager.shared.cardFlip()
@@ -220,6 +225,11 @@ final class TrickViewModel: ObservableObject {
         } else {
             // After flipping, allow free 2D movement
             peekOffset = relativeOffset
+        }
+
+        // Track the minimum Y (furthest point dragged away from fan)
+        if peekOffset.height < peekMinY {
+            peekMinY = peekOffset.height
         }
 
         // Flip card face-up once dragged past threshold
@@ -261,6 +271,29 @@ final class TrickViewModel: ObservableObject {
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
                 self?.peekedCardID = nil
+            }
+            return
+        }
+
+        // Detect if card is being dragged back toward the fan
+        // If current Y is significantly higher than the minimum Y reached, user is returning the card
+        let dragBackDistance = peekOffset.height - peekMinY
+        let totalDragDistance = abs(peekMinY)
+        let isDraggingBack = totalDragDistance > 10 && dragBackDistance > totalDragDistance * 0.4
+
+        if isDraggingBack {
+            // Card is being dragged back to fan — cancel peek without triggering reveal
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                peekOffset = .zero
+            }
+            if let idx = deck.firstIndex(where: { $0.id == peekedCardID }) {
+                withAnimation(.spring(response: 0.28, dampingFraction: 0.72)) {
+                    deck[idx].isFaceUp = false
+                }
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
+                self?.peekedCardID = nil
+                self?.hasFlipped = false
             }
             return
         }
@@ -367,6 +400,7 @@ final class TrickViewModel: ObservableObject {
         peekedCardID = nil
         peekOffset = .zero
         hasFlipped = false
+        peekMinY = 0
         withAnimation(.easeOut(duration: 0.2)) {
             phase = .idle
         }
