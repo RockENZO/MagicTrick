@@ -275,13 +275,39 @@ final class TrickViewModel: ObservableObject {
             return
         }
 
-        // Detect if card is being dragged back toward the fan (magician reveal phase only)
-        // During audience picking, dragging back still counts as picking
-        if hasPickedCard {
-            let dragBackDistance = peekOffset.height - peekMinY
-            let totalDragDistance = abs(peekMinY)
-            let isDraggingBack = totalDragDistance > 10 && dragBackDistance > totalDragDistance * 0.4
+        // Detect if card is being dragged back toward the fan
+        let dragBackDistance = peekOffset.height - peekMinY
+        let totalDragDistance = abs(peekMinY)
+        let isDraggingBack = totalDragDistance > 10 && dragBackDistance > totalDragDistance * 0.4
 
+        if !hasPickedCard {
+            // SPECTATOR PICKING phase
+            if isDraggingBack {
+                // Audience saw the card and dragged it back to hide — mark as picked immediately
+                hasPickedCard = true
+                // Clean up peek state
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                    peekOffset = .zero
+                }
+                if let idx = deck.firstIndex(where: { $0.id == peekedCardID }) {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.72)) {
+                        deck[idx].isFaceUp = false
+                    }
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
+                    self?.peekedCardID = nil
+                    self?.hasFlipped = false
+                }
+            } else {
+                // Audience left card out — start 2-second timer then gravitate back
+                let timer = DispatchWorkItem { [weak self] in
+                    self?.endPeek()
+                }
+                peekTimer = timer
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0, execute: timer)
+            }
+        } else {
+            // MAGICIAN REVEALING phase
             if isDraggingBack {
                 // Card is being dragged back to fan — cancel peek without triggering reveal
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
@@ -296,32 +322,22 @@ final class TrickViewModel: ObservableObject {
                     self?.peekedCardID = nil
                     self?.hasFlipped = false
                 }
-                return
+            } else {
+                // Reveal this card immediately
+                revealCard = deck[index]
+                hasRevealed = true
+
+                // Clear peek state
+                peekedCardID = nil
+                peekOffset = .zero
+                hasFlipped = false
+
+                withAnimation(.spring(response: 0.55, dampingFraction: 0.68)) {
+                    phase = .reveal
+                }
+
+                HapticManager.shared.reveal()
             }
-        }
-
-        if !hasPickedCard {
-            // SPECTATOR PICKING: card is face-up, start 2-second timer then gravitate back
-            let timer = DispatchWorkItem { [weak self] in
-                self?.endPeek()
-            }
-            peekTimer = timer
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0, execute: timer)
-        } else {
-            // MAGICIAN REVEALING: reveal this card immediately
-            revealCard = deck[index]
-            hasRevealed = true
-
-            // Clear peek state
-            peekedCardID = nil
-            peekOffset = .zero
-            hasFlipped = false
-
-            withAnimation(.spring(response: 0.55, dampingFraction: 0.68)) {
-                phase = .reveal
-            }
-
-            HapticManager.shared.reveal()
         }
     }
 
