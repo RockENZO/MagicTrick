@@ -275,27 +275,29 @@ final class TrickViewModel: ObservableObject {
             return
         }
 
-        // Detect if card is being dragged back toward the fan
-        // If current Y is significantly higher than the minimum Y reached, user is returning the card
-        let dragBackDistance = peekOffset.height - peekMinY
-        let totalDragDistance = abs(peekMinY)
-        let isDraggingBack = totalDragDistance > 10 && dragBackDistance > totalDragDistance * 0.4
+        // Detect if card is being dragged back toward the fan (magician reveal phase only)
+        // During audience picking, dragging back still counts as picking
+        if hasPickedCard {
+            let dragBackDistance = peekOffset.height - peekMinY
+            let totalDragDistance = abs(peekMinY)
+            let isDraggingBack = totalDragDistance > 10 && dragBackDistance > totalDragDistance * 0.4
 
-        if isDraggingBack {
-            // Card is being dragged back to fan — cancel peek without triggering reveal
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
-                peekOffset = .zero
-            }
-            if let idx = deck.firstIndex(where: { $0.id == peekedCardID }) {
-                withAnimation(.spring(response: 0.28, dampingFraction: 0.72)) {
-                    deck[idx].isFaceUp = false
+            if isDraggingBack {
+                // Card is being dragged back to fan — cancel peek without triggering reveal
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+                    peekOffset = .zero
                 }
+                if let idx = deck.firstIndex(where: { $0.id == peekedCardID }) {
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.72)) {
+                        deck[idx].isFaceUp = false
+                    }
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
+                    self?.peekedCardID = nil
+                    self?.hasFlipped = false
+                }
+                return
             }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
-                self?.peekedCardID = nil
-                self?.hasFlipped = false
-            }
-            return
         }
 
         if !hasPickedCard {
