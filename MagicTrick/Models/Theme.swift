@@ -59,15 +59,15 @@ extension AppTheme {
         switch self {
         case .dark:
             CardBackStyle(
-                fill: Color(red: 0.10, green: 0.15, blue: 0.30),
+                fill: Color(red: 0.18, green: 0.22, blue: 0.42),
                 borderColor: .white,
-                borderOpacity: 0.18,
-                sheenOpacity: 0.08,
+                borderOpacity: 0.30,
+                sheenOpacity: 0.15,
                 monogramColor: .white,
-                monogramOpacity: 0.25,
+                monogramOpacity: 0.40,
                 monogramLineWidth: 0.8,
                 dotColor: .white,
-                dotOpacity: 0.35
+                dotOpacity: 0.50
             )
         case .light:
             CardBackStyle(
