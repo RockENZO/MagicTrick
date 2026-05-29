@@ -19,6 +19,7 @@
 		A10000000000000000000010 /* MotionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000010 /* MotionManager.swift */; };
 		A10000000000000000000011 /* HapticManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000011 /* HapticManager.swift */; };
 		A10000000000000000000012 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000012 /* Assets.xcassets */; };
+		A10000000000000000000013 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000014 /* Theme.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -35,6 +36,7 @@
 		A20000000000000000000011 /* HapticManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HapticManager.swift; sourceTree = "<group>"; };
 		A20000000000000000000012 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A20000000000000000000013 /* MagicTrick.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MagicTrick.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A20000000000000000000014 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -74,6 +76,7 @@
 			children = (
 				A20000000000000000000002 /* Card.swift */,
 				A20000000000000000000003 /* Deck.swift */,
+				A20000000000000000000014 /* Theme.swift */,
 				A20000000000000000000004 /* TrickPhase.swift */,
 			);
 			path = Models;
@@ -202,6 +205,7 @@
 				A10000000000000000000009 /* RevealView.swift in Sources */,
 				A10000000000000000000010 /* MotionManager.swift in Sources */,
 				A10000000000000000000011 /* HapticManager.swift in Sources */,
+				A10000000000000000000013 /* Theme.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

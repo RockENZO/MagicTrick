@@ -9,6 +9,9 @@ struct RevealView: View {
     var returning: Bool = false
     var onReturnFinished: (() -> Void)? = nil
 
+    @Environment(\.colorScheme) private var colorScheme
+    private var theme: AppTheme { .current(from: colorScheme) }
+
     // Reveal entrance state
     @State private var appeared = false
     @State private var flipAngle: Double = 90
@@ -37,8 +40,8 @@ struct RevealView: View {
 
     var body: some View {
         ZStack {
-            // Dark overlay
-            Color.black.opacity(overlayOpacity)
+            // Overlay
+            theme.revealOverlayColor.opacity(overlayOpacity)
                 .ignoresSafeArea()
 
             // Card with 3D flip — perspective is fine here (single card)
@@ -64,7 +67,7 @@ struct RevealView: View {
             // Card name
             Text(card.fullName)
                 .font(.system(size: 28, weight: .bold, design: .rounded))
-                .foregroundColor(.white)
+                .foregroundColor(theme.revealLabelColor)
                 .opacity(labelOpacity)
                 .offset(y: 160)
         }

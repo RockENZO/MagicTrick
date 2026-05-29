@@ -11,6 +11,9 @@ struct CardView: View {
     let faceUp: Bool
     var isHovered: Bool = false
 
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var theme: AppTheme { .current(from: colorScheme) }
     private var cornerRadius: CGFloat { width * 0.08 }
 
     var body: some View {
@@ -27,7 +30,12 @@ struct CardView: View {
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
         .overlay(
             RoundedRectangle(cornerRadius: cornerRadius)
-                .stroke(Color.white.opacity(faceUp ? 0.05 : 0.12), lineWidth: 0.5)
+                .stroke(
+                    faceUp
+                        ? Color.white.opacity(theme.cardFace.borderOpacity)
+                        : theme.cardBack.borderColor.opacity(theme.cardBack.borderOpacity * 0.6),
+                    lineWidth: 0.5
+                )
         )
         // Shadow — resting < hovered < dragging
         .shadow(
@@ -41,45 +49,49 @@ struct CardView: View {
     // MARK: - Card Back
 
     private var cardBack: some View {
-        ZStack {
-            // Rich royal blue
-            RoundedRectangle(cornerRadius: cornerRadius)
-                .fill(Color(red: 0.10, green: 0.15, blue: 0.30))
+        let style = theme.cardBack
 
-            // Sheen highlight from top-left
+        return ZStack {
+            // Solid fill
             RoundedRectangle(cornerRadius: cornerRadius)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color.white.opacity(0.08),
-                            Color.clear
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
+                .fill(style.fill)
+
+            // Sheen highlight from top-left (dark mode only)
+            if style.sheenOpacity > 0 {
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(style.sheenOpacity),
+                                Color.clear
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
                     )
-                )
+            }
 
             // Thin inner border
             RoundedRectangle(cornerRadius: cornerRadius - 2)
-                .strokeBorder(Color.white.opacity(0.18), lineWidth: 0.5)
+                .strokeBorder(style.borderColor.opacity(style.borderOpacity), lineWidth: 0.5)
                 .padding(4)
 
             // Centered diamond outline
             CardDiamond()
-                .stroke(Color.white.opacity(0.25), lineWidth: 0.8)
+                .stroke(style.monogramColor.opacity(style.monogramOpacity), lineWidth: style.monogramLineWidth)
                 .frame(width: 16, height: 16)
 
             // Four corner dots
-            cornerDot(x: 9, y: 9)
-            cornerDot(x: width - 9, y: 9)
-            cornerDot(x: 9, y: height - 9)
-            cornerDot(x: width - 9, y: height - 9)
+            cornerDot(x: 9, y: 9, style: style)
+            cornerDot(x: width - 9, y: 9, style: style)
+            cornerDot(x: 9, y: height - 9, style: style)
+            cornerDot(x: width - 9, y: height - 9, style: style)
         }
     }
 
-    private func cornerDot(x: CGFloat, y: CGFloat) -> some View {
+    private func cornerDot(x: CGFloat, y: CGFloat, style: AppTheme.CardBackStyle) -> some View {
         Circle()
-            .fill(Color.white.opacity(0.35))
+            .fill(style.dotColor.opacity(style.dotOpacity))
             .frame(width: 2.5, height: 2.5)
             .position(x: x, y: y)
     }
@@ -87,20 +99,31 @@ struct CardView: View {
     // MARK: - Card Face
 
     private var cardFace: some View {
-        ZStack {
+        let suitColor = card.suit.color
+
+        return ZStack {
             // Cream white background
-            Color(red: 0.97, green: 0.97, blue: 0.95)
+            theme.cardFace.fill
+
+            // Ornamental frame
+            ornamentalFrame(suitColor: suitColor)
+
+            // Corner suit ornaments
+            cornerOrnament(suit: card.suit, size: width * 0.065, alignment: .topLeading)
+            cornerOrnament(suit: card.suit, size: width * 0.065, alignment: .topTrailing)
+            cornerOrnament(suit: card.suit, size: width * 0.065, alignment: .bottomLeading)
+            cornerOrnament(suit: card.suit, size: width * 0.065, alignment: .bottomTrailing)
 
             // Top-left pip
             VStack(alignment: .leading, spacing: 1) {
                 HStack {
                     VStack(spacing: 1) {
                         Text(card.rank.displaySymbol)
-                            .font(.system(size: width * 0.26, weight: .bold, design: .serif))
-                            .foregroundColor(card.suit.color)
+                            .font(.system(size: width * 0.26, weight: .heavy, design: .default))
+                            .foregroundColor(suitColor)
                         Text(card.suit.rawValue)
-                            .font(.system(size: width * 0.2))
-                            .foregroundColor(card.suit.color)
+                            .font(.system(size: width * 0.2, weight: .medium, design: .rounded))
+                            .foregroundColor(suitColor)
                     }
                     Spacer()
                 }
@@ -108,15 +131,8 @@ struct CardView: View {
             }
             .padding(width * 0.09)
 
-            // Center watermark
-            ZStack {
-                Text(card.suit.rawValue)
-                    .font(.system(size: width * 0.45))
-                    .foregroundColor(card.suit.color.opacity(0.12))
-                Text(card.rank.displaySymbol)
-                    .font(.system(size: width * 0.55, weight: .heavy, design: .serif))
-                    .foregroundColor(card.suit.color.opacity(0.06))
-            }
+            // Center watermark design
+            centerDesign(suitColor: suitColor)
 
             // Bottom-right pip (inverted)
             VStack {
@@ -125,18 +141,51 @@ struct CardView: View {
                     Spacer()
                     VStack(spacing: 1) {
                         Text(card.suit.rawValue)
-                            .font(.system(size: width * 0.2))
-                            .foregroundColor(card.suit.color)
+                            .font(.system(size: width * 0.2, weight: .medium, design: .rounded))
+                            .foregroundColor(suitColor)
                             .rotationEffect(.degrees(180))
                         Text(card.rank.displaySymbol)
-                            .font(.system(size: width * 0.26, weight: .bold, design: .serif))
-                            .foregroundColor(card.suit.color)
+                            .font(.system(size: width * 0.26, weight: .heavy, design: .default))
+                            .foregroundColor(suitColor)
                             .rotationEffect(.degrees(180))
                     }
                 }
             }
             .padding(width * 0.09)
         }
+    }
+
+    private func centerDesign(suitColor: Color) -> some View {
+        VStack(spacing: 2) {
+            Text(card.suit.rawValue)
+                .font(.system(size: width * 0.5, weight: .regular, design: .rounded))
+                .foregroundColor(suitColor.opacity(0.12))
+            Text(card.rank.displaySymbol)
+                .font(.system(size: width * 0.32, weight: .heavy, design: .default))
+                .foregroundColor(suitColor.opacity(0.06))
+        }
+    }
+
+    private func ornamentalFrame(suitColor: Color) -> some View {
+        ZStack {
+            // Outer subtle frame
+            RoundedRectangle(cornerRadius: cornerRadius - 3)
+                .stroke(suitColor.opacity(0.06), lineWidth: 0.5)
+                .padding(7)
+
+            // Inner subtle frame
+            RoundedRectangle(cornerRadius: cornerRadius - 6)
+                .stroke(suitColor.opacity(0.04), lineWidth: 0.3)
+                .padding(11)
+        }
+    }
+
+    private func cornerOrnament(suit: Suit, size: CGFloat, alignment: Alignment) -> some View {
+        Text(suit.rawValue)
+            .font(.system(size: size, weight: .ultraLight, design: .rounded))
+            .foregroundColor(suit.color.opacity(0.08))
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
+            .padding(12)
     }
 }
 
