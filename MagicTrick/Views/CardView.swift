@@ -119,7 +119,7 @@ struct CardView: View {
                 HStack {
                     VStack(spacing: 1) {
                         Text(card.rank.displaySymbol)
-                            .font(.system(size: width * 0.26, weight: .bold, design: .serif))
+                            .font(.system(size: width * 0.26, weight: .heavy, design: .default))
                             .foregroundColor(suitColor)
                         Text(card.suit.rawValue)
                             .font(.system(size: width * 0.2, weight: .medium, design: .rounded))
@@ -145,7 +145,7 @@ struct CardView: View {
                             .foregroundColor(suitColor)
                             .rotationEffect(.degrees(180))
                         Text(card.rank.displaySymbol)
-                            .font(.system(size: width * 0.26, weight: .bold, design: .serif))
+                            .font(.system(size: width * 0.26, weight: .heavy, design: .default))
                             .foregroundColor(suitColor)
                             .rotationEffect(.degrees(180))
                     }
@@ -155,28 +155,14 @@ struct CardView: View {
         }
     }
 
-    @ViewBuilder
     private func centerDesign(suitColor: Color) -> some View {
-        if let symbol = card.rank.sfSymbol {
-            // Face/Ace cards — large SF Symbol with suit below
-            VStack(spacing: 4) {
-                Image(systemName: symbol)
-                    .font(.system(size: width * 0.35, weight: .regular))
-                    .foregroundColor(suitColor.opacity(0.15))
-                Text(card.suit.rawValue)
-                    .font(.system(size: width * 0.5, weight: .regular, design: .rounded))
-                    .foregroundColor(suitColor.opacity(0.10))
-            }
-        } else {
-            // Number cards — large suit with rank below
-            VStack(spacing: 2) {
-                Text(card.suit.rawValue)
-                    .font(.system(size: width * 0.55, weight: .regular, design: .rounded))
-                    .foregroundColor(suitColor.opacity(0.12))
-                Text(card.rank.displaySymbol)
-                    .font(.system(size: width * 0.3, weight: .heavy, design: .serif))
-                    .foregroundColor(suitColor.opacity(0.06))
-            }
+        VStack(spacing: 2) {
+            Text(card.suit.rawValue)
+                .font(.system(size: width * 0.5, weight: .regular, design: .rounded))
+                .foregroundColor(suitColor.opacity(0.12))
+            Text(card.rank.displaySymbol)
+                .font(.system(size: width * 0.32, weight: .heavy, design: .default))
+                .foregroundColor(suitColor.opacity(0.06))
         }
     }
 
