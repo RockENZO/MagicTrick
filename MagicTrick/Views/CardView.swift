@@ -99,9 +99,20 @@ struct CardView: View {
     // MARK: - Card Face
 
     private var cardFace: some View {
-        ZStack {
+        let suitColor = card.suit.color
+
+        return ZStack {
             // Cream white background
             theme.cardFace.fill
+
+            // Ornamental frame
+            ornamentalFrame(suitColor: suitColor)
+
+            // Corner suit ornaments
+            cornerOrnament(suit: card.suit, size: width * 0.065, alignment: .topLeading)
+            cornerOrnament(suit: card.suit, size: width * 0.065, alignment: .topTrailing)
+            cornerOrnament(suit: card.suit, size: width * 0.065, alignment: .bottomLeading)
+            cornerOrnament(suit: card.suit, size: width * 0.065, alignment: .bottomTrailing)
 
             // Top-left pip
             VStack(alignment: .leading, spacing: 1) {
@@ -109,10 +120,10 @@ struct CardView: View {
                     VStack(spacing: 1) {
                         Text(card.rank.displaySymbol)
                             .font(.system(size: width * 0.26, weight: .bold, design: .serif))
-                            .foregroundColor(card.suit.color)
+                            .foregroundColor(suitColor)
                         Text(card.suit.rawValue)
-                            .font(.system(size: width * 0.2))
-                            .foregroundColor(card.suit.color)
+                            .font(.system(size: width * 0.2, weight: .medium, design: .rounded))
+                            .foregroundColor(suitColor)
                     }
                     Spacer()
                 }
@@ -120,15 +131,8 @@ struct CardView: View {
             }
             .padding(width * 0.09)
 
-            // Center watermark
-            ZStack {
-                Text(card.suit.rawValue)
-                    .font(.system(size: width * 0.45))
-                    .foregroundColor(card.suit.color.opacity(0.12))
-                Text(card.rank.displaySymbol)
-                    .font(.system(size: width * 0.55, weight: .heavy, design: .serif))
-                    .foregroundColor(card.suit.color.opacity(0.06))
-            }
+            // Center watermark design
+            centerDesign(suitColor: suitColor)
 
             // Bottom-right pip (inverted)
             VStack {
@@ -137,18 +141,65 @@ struct CardView: View {
                     Spacer()
                     VStack(spacing: 1) {
                         Text(card.suit.rawValue)
-                            .font(.system(size: width * 0.2))
-                            .foregroundColor(card.suit.color)
+                            .font(.system(size: width * 0.2, weight: .medium, design: .rounded))
+                            .foregroundColor(suitColor)
                             .rotationEffect(.degrees(180))
                         Text(card.rank.displaySymbol)
                             .font(.system(size: width * 0.26, weight: .bold, design: .serif))
-                            .foregroundColor(card.suit.color)
+                            .foregroundColor(suitColor)
                             .rotationEffect(.degrees(180))
                     }
                 }
             }
             .padding(width * 0.09)
         }
+    }
+
+    @ViewBuilder
+    private func centerDesign(suitColor: Color) -> some View {
+        if let symbol = card.rank.sfSymbol {
+            // Face/Ace cards — large SF Symbol with suit below
+            VStack(spacing: 4) {
+                Image(systemName: symbol)
+                    .font(.system(size: width * 0.35, weight: .regular))
+                    .foregroundColor(suitColor.opacity(0.15))
+                Text(card.suit.rawValue)
+                    .font(.system(size: width * 0.5, weight: .regular, design: .rounded))
+                    .foregroundColor(suitColor.opacity(0.10))
+            }
+        } else {
+            // Number cards — large suit with rank below
+            VStack(spacing: 2) {
+                Text(card.suit.rawValue)
+                    .font(.system(size: width * 0.55, weight: .regular, design: .rounded))
+                    .foregroundColor(suitColor.opacity(0.12))
+                Text(card.rank.displaySymbol)
+                    .font(.system(size: width * 0.3, weight: .heavy, design: .serif))
+                    .foregroundColor(suitColor.opacity(0.06))
+            }
+        }
+    }
+
+    private func ornamentalFrame(suitColor: Color) -> some View {
+        ZStack {
+            // Outer subtle frame
+            RoundedRectangle(cornerRadius: cornerRadius - 3)
+                .stroke(suitColor.opacity(0.06), lineWidth: 0.5)
+                .padding(7)
+
+            // Inner subtle frame
+            RoundedRectangle(cornerRadius: cornerRadius - 6)
+                .stroke(suitColor.opacity(0.04), lineWidth: 0.3)
+                .padding(11)
+        }
+    }
+
+    private func cornerOrnament(suit: Suit, size: CGFloat, alignment: Alignment) -> some View {
+        Text(suit.rawValue)
+            .font(.system(size: size, weight: .ultraLight, design: .rounded))
+            .foregroundColor(suit.color.opacity(0.08))
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
+            .padding(12)
     }
 }
 
