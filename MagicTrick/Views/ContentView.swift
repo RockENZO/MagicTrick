@@ -5,6 +5,9 @@ struct ContentView: View {
     @StateObject private var viewModel = TrickViewModel()
     @ObservedObject private var motionManager = MotionManager.shared
     @State private var lastLandscapeIsLeft: Bool = false  // true = left landscape, false = right landscape
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var theme: AppTheme { .current(from: colorScheme) }
 
     var body: some View {
         GeometryReader { geometry in
@@ -12,7 +15,8 @@ struct ContentView: View {
 
             ZStack {
                 // Background gradient
-                backgroundGradient
+                theme.backgroundGradient
+                    .ignoresSafeArea()
 
                 // DeckView always present — stacked deck visible underneath during return
                 DeckView(viewModel: viewModel, fanFromLeft: lastLandscapeIsLeft)
@@ -78,20 +82,6 @@ struct ContentView: View {
         .statusBarHidden(true)
     }
 
-    // MARK: - Background
-    private var backgroundGradient: some View {
-        LinearGradient(
-            colors: [
-                Color(red: 0.05, green: 0.08, blue: 0.15),
-                Color(red: 0.03, green: 0.05, blue: 0.10),
-                Color(red: 0.01, green: 0.02, blue: 0.05),
-                .black
-            ],
-            startPoint: .top,
-            endPoint: .bottom
-        )
-        .ignoresSafeArea()
-    }
 }
 
 #Preview {

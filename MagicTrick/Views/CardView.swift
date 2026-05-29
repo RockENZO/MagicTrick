@@ -11,6 +11,9 @@ struct CardView: View {
     let faceUp: Bool
     var isHovered: Bool = false
 
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var theme: AppTheme { .current(from: colorScheme) }
     private var cornerRadius: CGFloat { width * 0.08 }
 
     var body: some View {
@@ -27,7 +30,7 @@ struct CardView: View {
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
         .overlay(
             RoundedRectangle(cornerRadius: cornerRadius)
-                .stroke(Color.white.opacity(faceUp ? 0.05 : 0.12), lineWidth: 0.5)
+                .stroke(Color.white.opacity(faceUp ? theme.cardFace.borderOpacity : 0.12), lineWidth: 0.5)
         )
         // Shadow — resting < hovered < dragging
         .shadow(
@@ -41,45 +44,63 @@ struct CardView: View {
     // MARK: - Card Back
 
     private var cardBack: some View {
-        ZStack {
-            // Rich royal blue
-            RoundedRectangle(cornerRadius: cornerRadius)
-                .fill(Color(red: 0.10, green: 0.15, blue: 0.30))
+        let style = theme.cardBack
 
-            // Sheen highlight from top-left
+        return ZStack {
+            // Solid fill
             RoundedRectangle(cornerRadius: cornerRadius)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            Color.white.opacity(0.08),
-                            Color.clear
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
+                .fill(style.fill)
+
+            // Sheen highlight from top-left (dark mode only)
+            if style.sheenOpacity > 0 {
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .fill(
+                        LinearGradient(
+                            colors: [
+                                Color.white.opacity(style.sheenOpacity),
+                                Color.clear
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
                     )
-                )
+            }
 
             // Thin inner border
             RoundedRectangle(cornerRadius: cornerRadius - 2)
-                .strokeBorder(Color.white.opacity(0.18), lineWidth: 0.5)
+                .strokeBorder(
+                    colorScheme == .dark
+                        ? Color.white.opacity(style.borderOpacity)
+                        : Color(red: 0.7, green: 0.7, blue: 0.72).opacity(style.borderOpacity),
+                    lineWidth: 0.5
+                )
                 .padding(4)
 
             // Centered diamond outline
             CardDiamond()
-                .stroke(Color.white.opacity(0.25), lineWidth: 0.8)
+                .stroke(
+                    colorScheme == .dark
+                        ? Color.white.opacity(style.monogramOpacity)
+                        : Color(red: 0.6, green: 0.6, blue: 0.62).opacity(style.monogramOpacity),
+                    lineWidth: colorScheme == .dark ? 0.8 : 0.5
+                )
                 .frame(width: 16, height: 16)
 
             // Four corner dots
-            cornerDot(x: 9, y: 9)
-            cornerDot(x: width - 9, y: 9)
-            cornerDot(x: 9, y: height - 9)
-            cornerDot(x: width - 9, y: height - 9)
+            cornerDot(x: 9, y: 9, style: style)
+            cornerDot(x: width - 9, y: 9, style: style)
+            cornerDot(x: 9, y: height - 9, style: style)
+            cornerDot(x: width - 9, y: height - 9, style: style)
         }
     }
 
-    private func cornerDot(x: CGFloat, y: CGFloat) -> some View {
+    private func cornerDot(x: CGFloat, y: CGFloat, style: AppTheme.CardBackStyle) -> some View {
         Circle()
-            .fill(Color.white.opacity(0.35))
+            .fill(
+                colorScheme == .dark
+                    ? Color.white.opacity(style.dotOpacity)
+                    : Color(red: 0.6, green: 0.6, blue: 0.62).opacity(style.dotOpacity)
+            )
             .frame(width: 2.5, height: 2.5)
             .position(x: x, y: y)
     }
@@ -89,7 +110,7 @@ struct CardView: View {
     private var cardFace: some View {
         ZStack {
             // Cream white background
-            Color(red: 0.97, green: 0.97, blue: 0.95)
+            theme.cardFace.fill
 
             // Top-left pip
             VStack(alignment: .leading, spacing: 1) {
