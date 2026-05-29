@@ -30,7 +30,12 @@ struct CardView: View {
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
         .overlay(
             RoundedRectangle(cornerRadius: cornerRadius)
-                .stroke(Color.white.opacity(faceUp ? theme.cardFace.borderOpacity : 0.12), lineWidth: 0.5)
+                .stroke(
+                    faceUp
+                        ? Color.white.opacity(theme.cardFace.borderOpacity)
+                        : theme.cardBack.borderColor.opacity(theme.cardBack.borderOpacity * 0.6),
+                    lineWidth: 0.5
+                )
         )
         // Shadow — resting < hovered < dragging
         .shadow(
@@ -68,22 +73,12 @@ struct CardView: View {
 
             // Thin inner border
             RoundedRectangle(cornerRadius: cornerRadius - 2)
-                .strokeBorder(
-                    colorScheme == .dark
-                        ? Color.white.opacity(style.borderOpacity)
-                        : Color(red: 0.7, green: 0.7, blue: 0.72).opacity(style.borderOpacity),
-                    lineWidth: 0.5
-                )
+                .strokeBorder(style.borderColor.opacity(style.borderOpacity), lineWidth: 0.5)
                 .padding(4)
 
             // Centered diamond outline
             CardDiamond()
-                .stroke(
-                    colorScheme == .dark
-                        ? Color.white.opacity(style.monogramOpacity)
-                        : Color(red: 0.6, green: 0.6, blue: 0.62).opacity(style.monogramOpacity),
-                    lineWidth: colorScheme == .dark ? 0.8 : 0.5
-                )
+                .stroke(style.monogramColor.opacity(style.monogramOpacity), lineWidth: style.monogramLineWidth)
                 .frame(width: 16, height: 16)
 
             // Four corner dots
@@ -96,11 +91,7 @@ struct CardView: View {
 
     private func cornerDot(x: CGFloat, y: CGFloat, style: AppTheme.CardBackStyle) -> some View {
         Circle()
-            .fill(
-                colorScheme == .dark
-                    ? Color.white.opacity(style.dotOpacity)
-                    : Color(red: 0.6, green: 0.6, blue: 0.62).opacity(style.dotOpacity)
-            )
+            .fill(style.dotColor.opacity(style.dotOpacity))
             .frame(width: 2.5, height: 2.5)
             .position(x: x, y: y)
     }

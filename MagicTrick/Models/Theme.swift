@@ -40,9 +40,13 @@ extension AppTheme {
 extension AppTheme {
     struct CardBackStyle {
         let fill: Color
+        let borderColor: Color
         let borderOpacity: Double
         let sheenOpacity: Double
+        let monogramColor: Color
         let monogramOpacity: Double
+        let monogramLineWidth: CGFloat
+        let dotColor: Color
         let dotOpacity: Double
     }
 
@@ -56,18 +60,26 @@ extension AppTheme {
         case .dark:
             CardBackStyle(
                 fill: Color(red: 0.10, green: 0.15, blue: 0.30),
+                borderColor: .white,
                 borderOpacity: 0.18,
                 sheenOpacity: 0.08,
+                monogramColor: .white,
                 monogramOpacity: 0.25,
+                monogramLineWidth: 0.8,
+                dotColor: .white,
                 dotOpacity: 0.35
             )
         case .light:
             CardBackStyle(
-                fill: Color(red: 0.98, green: 0.98, blue: 0.97),
-                borderOpacity: 0.12,
+                fill: Color(red: 0.94, green: 0.92, blue: 0.88),
+                borderColor: Color(red: 0.35, green: 0.33, blue: 0.30),
+                borderOpacity: 0.45,
                 sheenOpacity: 0,
-                monogramOpacity: 0.08,
-                dotOpacity: 0.15
+                monogramColor: Color(red: 0.35, green: 0.33, blue: 0.30),
+                monogramOpacity: 0.35,
+                monogramLineWidth: 0.6,
+                dotColor: Color(red: 0.35, green: 0.33, blue: 0.30),
+                dotOpacity: 0.45
             )
         }
     }
