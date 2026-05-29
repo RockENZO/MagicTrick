@@ -26,9 +26,9 @@ extension AppTheme {
         case .light:
             LinearGradient(
                 colors: [
-                    Color(red: 0.98, green: 0.98, blue: 0.97),
-                    Color(red: 0.95, green: 0.95, blue: 0.94),
-                    Color(red: 0.93, green: 0.93, blue: 0.92),
+                    Color(red: 0.18, green: 0.18, blue: 0.19),
+                    Color(red: 0.14, green: 0.14, blue: 0.15),
+                    Color(red: 0.10, green: 0.10, blue: 0.11),
                 ],
                 startPoint: .top,
                 endPoint: .bottom
@@ -106,7 +106,7 @@ extension AppTheme {
         case .dark:
             Color.black
         case .light:
-            Color(red: 0.95, green: 0.95, blue: 0.94)
+            Color(red: 0.08, green: 0.08, blue: 0.09)
         }
     }
 
@@ -115,7 +115,7 @@ extension AppTheme {
         case .dark:
             .white
         case .light:
-            Color(red: 0.1, green: 0.1, blue: 0.15)
+            .white
         }
     }
 }
