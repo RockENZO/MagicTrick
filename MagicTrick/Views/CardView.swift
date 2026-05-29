@@ -37,7 +37,6 @@ struct CardView: View {
                     lineWidth: 0.5
                 )
         )
-        .overlay(dragGloss)
         // Shadow — resting < hovered < dragging
         .shadow(
             color: .black.opacity(isDragging ? 0.55 : (isHovered ? 0.4 : 0.3)),
@@ -187,29 +186,6 @@ struct CardView: View {
             .foregroundColor(suit.color.opacity(0.08))
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
             .padding(12)
-    }
-
-    // MARK: - Drag Gloss
-
-    @ViewBuilder
-    private var dragGloss: some View {
-        if isDragging {
-            RoundedRectangle(cornerRadius: cornerRadius)
-                .fill(
-                    LinearGradient(
-                        colors: [
-                            .white.opacity(0.35),
-                            .white.opacity(0.12),
-                            .clear,
-                            .white.opacity(0.06),
-                            .clear,
-                        ],
-                        startPoint: .topLeading,
-                        endPoint: .bottomTrailing
-                    )
-                )
-                .allowsHitTesting(false)
-        }
     }
 }
 
