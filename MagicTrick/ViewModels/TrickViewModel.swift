@@ -140,7 +140,7 @@ final class TrickViewModel: ObservableObject {
             phase = .returning
         case .spread:
             if revealedCardID != nil {
-                dismissReveal()
+                dismissReveal(animated: false)
             } else if hasRevealed || revealCard != nil {
                 withAnimation(.easeOut(duration: 0.3)) {
                     resetDeck()
@@ -415,14 +415,28 @@ final class TrickViewModel: ObservableObject {
         }
     }
 
-    /// Dismiss the revealed card — glow fades, card slides back, then resets round state
-    func dismissReveal() {
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
-            revealGlow = 0
-            revealPosition = .zero
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
-            self?.finishReturn()
+    /// Dismiss the revealed card
+    /// - Parameter animated: true (tap) animates card back to fanned position;
+    ///   false (rotation) quickly tucks card into deck so it follows the
+    ///   fanProgress layout transition smoothly
+    func dismissReveal(animated: Bool = true) {
+        if animated {
+            withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+                revealGlow = 0
+                revealPosition = .zero
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
+                self?.finishReturn()
+            }
+        } else {
+            withAnimation(.easeOut(duration: 0.12)) {
+                revealGlow = 0
+                revealPosition = .zero
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
+                self?.revealedCardID = nil
+                self?.finishReturn()
+            }
         }
     }
 

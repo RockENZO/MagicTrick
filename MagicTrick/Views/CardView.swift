@@ -45,23 +45,41 @@ struct CardView: View {
             x: 0,
             y: isDragging ? 8 : (isHovered ? 4 : 2)
         )
-        // Reveal glow — golden aura around the revealed card
+        // Reveal aura — soft radial glow behind card, thin gradient edge
+        .background(
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            Color.white.opacity(revealGlow * 0.12),
+                            Color.yellow.opacity(revealGlow * 0.05),
+                            .clear
+                        ],
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: width * 0.7
+                    )
+                )
+                .frame(width: width * 2, height: width * 2)
+                .opacity(revealGlow)
+        )
         .overlay(
             RoundedRectangle(cornerRadius: cornerRadius)
                 .stroke(
-                    Color.yellow.opacity(revealGlow * 0.5),
-                    lineWidth: revealGlow * 3
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(revealGlow * 0.5),
+                            Color.yellow.opacity(revealGlow * 0.2),
+                            Color.white.opacity(revealGlow * 0.5),
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 0.8
                 )
-                .blur(radius: 6)
                 .opacity(revealGlow)
         )
-        .shadow(
-            color: Color.yellow.opacity(revealGlow * 0.35),
-            radius: revealGlow * 18,
-            x: 0,
-            y: 0
-        )
-        .scaleEffect(1 + revealGlow * 0.04)
+        .scaleEffect(1 + revealGlow * 0.025)
     }
 
     // MARK: - Card Back
