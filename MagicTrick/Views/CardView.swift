@@ -10,6 +10,7 @@ struct CardView: View {
     let isDragging: Bool
     let faceUp: Bool
     var isHovered: Bool = false
+    var revealGlow: CGFloat = 0
 
     @Environment(\.colorScheme) private var colorScheme
 
@@ -44,6 +45,23 @@ struct CardView: View {
             x: 0,
             y: isDragging ? 8 : (isHovered ? 4 : 2)
         )
+        // Reveal glow — golden aura around the revealed card
+        .overlay(
+            RoundedRectangle(cornerRadius: cornerRadius)
+                .stroke(
+                    Color.yellow.opacity(revealGlow * 0.5),
+                    lineWidth: revealGlow * 3
+                )
+                .blur(radius: 6)
+                .opacity(revealGlow)
+        )
+        .shadow(
+            color: Color.yellow.opacity(revealGlow * 0.35),
+            radius: revealGlow * 18,
+            x: 0,
+            y: 0
+        )
+        .scaleEffect(1 + revealGlow * 0.04)
     }
 
     // MARK: - Card Back

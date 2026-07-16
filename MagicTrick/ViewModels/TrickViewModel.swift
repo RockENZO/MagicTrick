@@ -25,6 +25,11 @@ final class TrickViewModel: ObservableObject {
     // ★ THE SECRET: true only when corner is tapped during shuffling
     @Published var magicTriggered = false
 
+    // In-deck reveal state — card glows in place at its peeked position
+    @Published var revealGlow: CGFloat = 0
+    @Published var revealedCardID: UUID? = nil
+    @Published var revealPosition: CGSize = .zero
+
     // MARK: - Private State
     private var originalDeck: [Card] = []
     private var shuffleWorkItem: DispatchWorkItem?
@@ -64,6 +69,9 @@ final class TrickViewModel: ObservableObject {
         magicTriggered = false
         hasPickedCard = false
         hasRevealed = false
+        revealedCardID = nil
+        revealPosition = .zero
+        revealGlow = 0
         shuffleWorkItem?.cancel()
         shuffleWorkItem = nil
         peekTimer?.cancel()
@@ -104,6 +112,9 @@ final class TrickViewModel: ObservableObject {
             settleShuffle()
 
             hasRevealed = false
+            revealedCardID = nil
+            revealPosition = .zero
+            revealGlow = 0
             phase = .spread
         default:
             break
@@ -125,11 +136,12 @@ final class TrickViewModel: ObservableObject {
 
         switch phase {
         case .reveal:
-            // Phase change is instant — RevealView handles flip-back + slide animation
-            // and calls finishReturn() via callback when done
+            // Fallback — not used in the in-deck reveal flow
             phase = .returning
         case .spread:
-            if hasRevealed || revealCard != nil {
+            if revealedCardID != nil {
+                dismissReveal()
+            } else if hasRevealed || revealCard != nil {
                 withAnimation(.easeOut(duration: 0.3)) {
                     resetDeck()
                 }
@@ -322,18 +334,20 @@ final class TrickViewModel: ObservableObject {
                     self?.peekedCardID = nil
                     self?.hasFlipped = false
                 }
-            } else {
-                // Reveal this card immediately
+            } else if revealedCardID == nil {
+                // Capture current peek position before clearing state
+                revealPosition = peekOffset
+                revealedCardID = deck[index].id
                 revealCard = deck[index]
                 hasRevealed = true
 
-                // Clear peek state
+                // Clear peek state — card now uses revealPosition offset instead
                 peekedCardID = nil
                 peekOffset = .zero
                 hasFlipped = false
 
-                withAnimation(.spring(response: 0.55, dampingFraction: 0.68)) {
-                    phase = .reveal
+                withAnimation(.easeOut(duration: 0.4)) {
+                    revealGlow = 1
                 }
 
                 HapticManager.shared.reveal()
@@ -401,9 +415,20 @@ final class TrickViewModel: ObservableObject {
         }
     }
 
+    /// Dismiss the revealed card — glow fades, card slides back, then resets round state
+    func dismissReveal() {
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+            revealGlow = 0
+            revealPosition = .zero
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
+            self?.finishReturn()
+        }
+    }
+
     /// Called after the return animation completes — clean up and go to idle
     func finishReturn() {
-        guard phase == .returning else { return }
+        guard phase == .returning || phase == .spread else { return }
         // Reset any face-up deck cards (from the peek flow)
         for i in deck.indices where deck[i].isFaceUp {
             deck[i].isFaceUp = false
@@ -414,6 +439,9 @@ final class TrickViewModel: ObservableObject {
         hasRevealed = false
         hasPickedCard = false
         magicTriggered = false   // Reset secret trigger — must double-tap again each round
+        revealedCardID = nil
+        revealPosition = .zero
+        revealGlow = 0
         hoveredCardID = nil
         peekedCardID = nil
         peekOffset = .zero
