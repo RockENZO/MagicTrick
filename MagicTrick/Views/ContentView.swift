@@ -23,15 +23,12 @@ struct ContentView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .zIndex(0)
 
-                // Reveal card — visible during both reveal and returning phases
-                // Single view instance so animation state (flip, appeared) persists
-                if viewModel.phase == .reveal || viewModel.phase == .returning, let card = viewModel.revealCard {
-                    RevealView(
-                        card: card,
-                        returning: viewModel.phase == .returning,
-                        onReturnFinished: { viewModel.finishReturn() }
-                    )
-                    .zIndex(10)
+                // Dismiss overlay — tap anywhere to dismiss the revealed card
+                if viewModel.revealedCardID != nil {
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture { viewModel.dismissReveal() }
+                        .zIndex(5)
                 }
 
                 // Secret invisible trigger — top right corner, only during shuffling
@@ -47,7 +44,7 @@ struct ContentView: View {
                 }
             }
             .ignoresSafeArea()
-            // Handle rotation for phases where DeckView is not visible (.reveal)
+            // Handle rotation for phase transitions
             .onChange(of: isLandscape) { newValue in
                 if newValue {
                     // Detect rotation direction from device orientation

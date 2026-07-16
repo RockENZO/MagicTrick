@@ -226,6 +226,7 @@ struct DeckView: View {
 
         let isPeeked = viewModel.peekedCardID == card.id
         let isHovered = viewModel.hoveredCardID == card.id
+        let isRevealed = viewModel.revealedCardID == card.id
         let isFaceUp = card.isFaceUp
 
         let shuffleY: CGFloat = (index < viewModel.shuffleOffsets.count)
@@ -240,19 +241,22 @@ struct DeckView: View {
 
         let peekDX: CGFloat = isPeeked ? viewModel.peekOffset.width : 0
         let peekDY: CGFloat = isPeeked ? viewModel.peekOffset.height : 0
-        let fx: CGFloat = layout.x + shuffleX + hv.shiftX + peekDX
-        let fy: CGFloat = layout.y + shuffleY + hv.offset + peekDY
+        let revealDX: CGFloat = isRevealed ? viewModel.revealPosition.width : 0
+        let revealDY: CGFloat = isRevealed ? viewModel.revealPosition.height : 0
+        let fx: CGFloat = layout.x + shuffleX + hv.shiftX + peekDX + revealDX
+        let fy: CGFloat = layout.y + shuffleY + hv.offset + peekDY + revealDY
         let fr: Double = layout.rotation + shuffleRot + hv.rotation + (isPeeked ? peekRotation : 0)
-        let fs: CGFloat = isPeeked ? 1.08 : (isHovered ? hv.scale : layout.scale)
-        let fz: Double = isPeeked ? 1000 : (isHovered ? 999 : layout.zIndex)
+        let fs: CGFloat = isPeeked ? 1.08 : (isRevealed ? 1.08 : (isHovered ? hv.scale : layout.scale))
+        let fz: Double = isPeeked ? 1000 : (isRevealed ? 1000 : (isHovered ? 999 : layout.zIndex))
 
         CardView(
             card: card,
             width: cardWidth,
             height: cardHeight,
-            isDragging: isPeeked,
+            isDragging: isPeeked || isRevealed,
             faceUp: isFaceUp,
-            isHovered: isHovered
+            isHovered: isHovered,
+            revealGlow: viewModel.revealGlow
         )
         .position(x: fx, y: fy)
         .rotationEffect(.degrees(fr), anchor: .center)
