@@ -45,22 +45,23 @@ struct CardView: View {
             x: 0,
             y: isDragging ? 8 : (isHovered ? 4 : 2)
         )
-        // Reveal aura — soft radial glow behind card, thin gradient edge
+        // Reveal aura — soft luminous glow behind card with gradient edge
         .background(
             Circle()
                 .fill(
                     RadialGradient(
                         colors: [
-                            Color.white.opacity(revealGlow * 0.12),
-                            Color.yellow.opacity(revealGlow * 0.05),
+                            Color.white.opacity(revealGlow * 0.22),
+                            Color.yellow.opacity(revealGlow * 0.09),
+                            Color.white.opacity(revealGlow * 0.02),
                             .clear
                         ],
                         center: .center,
                         startRadius: 0,
-                        endRadius: width * 0.7
+                        endRadius: width * 0.9
                     )
                 )
-                .frame(width: width * 2, height: width * 2)
+                .frame(width: width * 2.5, height: width * 2.5)
                 .opacity(revealGlow)
         )
         .overlay(
@@ -68,18 +69,23 @@ struct CardView: View {
                 .stroke(
                     LinearGradient(
                         colors: [
-                            Color.white.opacity(revealGlow * 0.5),
-                            Color.yellow.opacity(revealGlow * 0.2),
-                            Color.white.opacity(revealGlow * 0.5),
+                            Color.white.opacity(revealGlow * 0.65),
+                            Color.yellow.opacity(revealGlow * 0.35),
+                            Color.white.opacity(revealGlow * 0.65),
                         ],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     ),
-                    lineWidth: 0.8
+                    lineWidth: 1.2
                 )
-                .opacity(revealGlow)
         )
-        .scaleEffect(1 + revealGlow * 0.025)
+        .shadow(
+            color: Color.white.opacity(revealGlow * 0.15),
+            radius: revealGlow * 12,
+            x: 0,
+            y: 0
+        )
+        .scaleEffect(1 + revealGlow * 0.03)
     }
 
     // MARK: - Card Back

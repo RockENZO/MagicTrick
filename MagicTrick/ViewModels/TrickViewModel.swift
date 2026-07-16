@@ -416,17 +416,25 @@ final class TrickViewModel: ObservableObject {
     }
 
     /// Dismiss the revealed card
-    /// - Parameter animated: true (tap) animates card back to fanned position;
+    /// - Parameter animated: true (tap) animates card back as fan closes;
     ///   false (rotation) quickly tucks card into deck so it follows the
     ///   fanProgress layout transition smoothly
     func dismissReveal(animated: Bool = true) {
         if animated {
-            withAnimation(.spring(response: 0.35, dampingFraction: 0.75)) {
+            let cardID = revealedCardID
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) {
                 revealGlow = 0
                 revealPosition = .zero
             }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
-                self?.finishReturn()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
+                withAnimation(.easeOut(duration: 0.3)) {
+                    self?.phase = .idle
+                }
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                guard let self = self, self.revealedCardID == cardID else { return }
+                self.revealedCardID = nil
+                self.finishReturn()
             }
         } else {
             withAnimation(.easeOut(duration: 0.12)) {
@@ -434,15 +442,16 @@ final class TrickViewModel: ObservableObject {
                 revealPosition = .zero
             }
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
-                self?.revealedCardID = nil
-                self?.finishReturn()
+                guard let self = self else { return }
+                self.revealedCardID = nil
+                self.finishReturn()
             }
         }
     }
 
     /// Called after the return animation completes — clean up and go to idle
     func finishReturn() {
-        guard phase == .returning || phase == .spread else { return }
+        guard phase == .returning || phase == .spread || phase == .idle else { return }
         // Reset any face-up deck cards (from the peek flow)
         for i in deck.indices where deck[i].isFaceUp {
             deck[i].isFaceUp = false
