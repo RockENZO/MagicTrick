@@ -23,6 +23,10 @@ During the shuffle, the magician **double-taps the top-right corner** of the scr
 
 Without the double-tap, the reveal works as expected — whatever card is dragged is revealed normally.
 
+## Build and verify
+
+Open `MagicTrick.xcodeproj` in Xcode, select the MagicTrick target and your signing team, then build/run on an iOS 16+ device. A physical device is needed to assess motion-triggered shake and haptic behavior. The demo GIF illustrates the interaction; this documentation update does not constitute a new device test or compatibility benchmark.
+
 ## Tech Stack
 
 - **SwiftUI** — Pure SwiftUI, no UIKit (except AppDelegate for orientation lock)
@@ -38,7 +42,8 @@ MagicTrick/
 ├── Models/
 │   ├── Card.swift               # Card model with Rank/Suit enums
 │   ├── Deck.swift                # 52-card deck
-│   └── TrickPhase.swift         # Game phases: idle → spread → shuffling → reveal
+│   ├── TrickPhase.swift         # Game phases: idle → spread → shuffling → reveal
+│   └── Theme.swift              # System light/dark card and backdrop styles
 ├── ViewModels/
 │   └── TrickViewModel.swift     # Core game logic, peek flow, shuffle, magic trigger
 ├── Views/
@@ -54,6 +59,7 @@ MagicTrick/
 ## Key Design Decisions
 
 - **No UI chrome** — No buttons, labels, or menus. All interaction is physical.
-- **Card back** — Apple-style minimal design: deep navy, thin border, centered diamond, corner dots.
+- **Adaptive card styling** — `AppTheme` follows the system color scheme: blue/navy card backs in dark mode and cream card backs in light mode, with theme-specific borders, corner dots and monogram styling.
 - **Finger-following drag** — Cards track the finger in 2D once flipped, before flip they only move upward.
 - **Realistic shuffle** — Overhand riffle with staggered lifts, lateral spread, and slam-drop bounce.
+
